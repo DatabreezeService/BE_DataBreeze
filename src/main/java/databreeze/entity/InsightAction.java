@@ -1,7 +1,7 @@
 package databreeze.entity;
 
-import databreeze.enums.InsightActionStatus;
-import databreeze.enums.InsightActionType;
+import databreeze.entity.enums.InsightActionStatus;
+import databreeze.entity.enums.InsightActionType;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;

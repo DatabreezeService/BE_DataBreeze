@@ -1,6 +1,6 @@
 package databreeze.entity;
 
-import databreeze.enums.ImportStepStatus;
+import databreeze.entity.enums.ImportStepStatus;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.Map;

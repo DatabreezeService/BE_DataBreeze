@@ -1,7 +1,7 @@
 package databreeze.entity;
 
-import databreeze.enums.AdEntityStatus;
-import databreeze.enums.AdPlatform;
+import databreeze.entity.enums.AdEntityStatus;
+import databreeze.entity.enums.AdPlatform;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;

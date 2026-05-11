@@ -1,6 +1,6 @@
 package databreeze.entity;
 
-import databreeze.enums.AuthProvider;
+import databreeze.entity.enums.AuthProvider;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.Map;

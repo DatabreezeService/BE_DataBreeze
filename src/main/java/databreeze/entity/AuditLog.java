@@ -1,6 +1,6 @@
 package databreeze.entity;
 
-import databreeze.enums.AuditAction;
+import databreeze.entity.enums.AuditAction;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.Map;

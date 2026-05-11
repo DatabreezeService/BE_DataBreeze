@@ -1,9 +1,9 @@
 package databreeze.entity;
 
-import databreeze.enums.ConnectionType;
-import databreeze.enums.DataSourceStatus;
-import databreeze.enums.DataSourceType;
-import databreeze.enums.SourcePlatform;
+import databreeze.entity.enums.ConnectionType;
+import databreeze.entity.enums.DataSourceStatus;
+import databreeze.entity.enums.DataSourceType;
+import databreeze.entity.enums.SourcePlatform;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;

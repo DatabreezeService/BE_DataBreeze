@@ -1,9 +1,9 @@
 package databreeze.entity;
 
-import databreeze.enums.InsightGeneratedBy;
-import databreeze.enums.InsightSeverity;
-import databreeze.enums.InsightStatus;
-import databreeze.enums.InsightType;
+import databreeze.entity.enums.InsightGeneratedBy;
+import databreeze.entity.enums.InsightSeverity;
+import databreeze.entity.enums.InsightStatus;
+import databreeze.entity.enums.InsightType;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;

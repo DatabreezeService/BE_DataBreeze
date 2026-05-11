@@ -1,8 +1,8 @@
 package databreeze.entity;
 
-import databreeze.enums.PaymentProvider;
-import databreeze.enums.WebhookProcessingStatus;
-import databreeze.enums.WebhookVerificationStatus;
+import databreeze.entity.enums.PaymentProvider;
+import databreeze.entity.enums.WebhookProcessingStatus;
+import databreeze.entity.enums.WebhookVerificationStatus;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.Map;

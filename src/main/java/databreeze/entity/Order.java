@@ -1,7 +1,7 @@
 package databreeze.entity;
 
-import databreeze.enums.CommercePlatform;
-import databreeze.enums.OrderStatus;
+import databreeze.entity.enums.CommercePlatform;
+import databreeze.entity.enums.OrderStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;

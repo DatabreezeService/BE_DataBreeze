@@ -1,9 +1,9 @@
 package databreeze.entity;
 
-import databreeze.enums.AuthProvider;
-import databreeze.enums.SystemRole;
-import databreeze.enums.UserStatus;
-import databreeze.enums.UserType;
+import databreeze.entity.enums.AuthProvider;
+import databreeze.entity.enums.SystemRole;
+import databreeze.entity.enums.UserStatus;
+import databreeze.entity.enums.UserType;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;

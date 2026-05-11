@@ -1,6 +1,6 @@
 package databreeze.entity;
 
-import databreeze.enums.SubscriptionStatus;
+import databreeze.entity.enums.SubscriptionStatus;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;

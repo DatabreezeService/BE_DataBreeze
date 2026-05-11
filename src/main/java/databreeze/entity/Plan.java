@@ -1,7 +1,7 @@
 package databreeze.entity;
 
-import databreeze.enums.BillingCycle;
-import databreeze.enums.PlanStatus;
+import databreeze.entity.enums.BillingCycle;
+import databreeze.entity.enums.PlanStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;

@@ -1,6 +1,6 @@
 package databreeze.entity;
 
-import databreeze.enums.InvoiceStatus;
+import databreeze.entity.enums.InvoiceStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;

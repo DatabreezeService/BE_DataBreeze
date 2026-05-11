@@ -1,7 +1,7 @@
 package databreeze.entity;
 
-import databreeze.enums.ImportJobStatus;
-import databreeze.enums.ImportJobType;
+import databreeze.entity.enums.ImportJobStatus;
+import databreeze.entity.enums.ImportJobType;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;

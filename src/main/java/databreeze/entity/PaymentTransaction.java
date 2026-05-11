@@ -1,7 +1,7 @@
 package databreeze.entity;
 
-import databreeze.enums.PaymentProvider;
-import databreeze.enums.PaymentStatus;
+import databreeze.entity.enums.PaymentProvider;
+import databreeze.entity.enums.PaymentStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;

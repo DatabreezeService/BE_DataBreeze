@@ -1,7 +1,7 @@
 package databreeze.entity;
 
-import databreeze.enums.MemberStatus;
-import databreeze.enums.WorkspaceRole;
+import databreeze.entity.enums.MemberStatus;
+import databreeze.entity.enums.WorkspaceRole;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;

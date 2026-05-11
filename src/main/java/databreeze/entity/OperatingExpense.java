@@ -1,7 +1,7 @@
 package databreeze.entity;
 
-import databreeze.enums.AllocationMethod;
-import databreeze.enums.ExpenseCategory;
+import databreeze.entity.enums.AllocationMethod;
+import databreeze.entity.enums.ExpenseCategory;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;

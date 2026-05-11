@@ -1,6 +1,6 @@
 package databreeze.entity;
 
-import databreeze.enums.AdPlatform;
+import databreeze.entity.enums.AdPlatform;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;

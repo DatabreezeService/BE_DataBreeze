@@ -1,6 +1,6 @@
 package databreeze.entity;
 
-import databreeze.enums.RawRowStatus;
+import databreeze.entity.enums.RawRowStatus;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.Map;
