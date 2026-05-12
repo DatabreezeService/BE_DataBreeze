@@ -1,6 +1,6 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.TargetDataType;
+import databreeze.enums.TargetDataType;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -11,8 +11,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -46,7 +45,7 @@ public class MappingTemplateField {
     private Boolean isRequired = false;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "transform_rule", columnDefinition = "jsonb")
+    @Column(name = "transform_rule", columnDefinition = "json")
     private Map<String, Object> transformRule;
 
     @Column(name = "confidence_score")

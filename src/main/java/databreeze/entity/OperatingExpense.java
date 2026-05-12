@@ -1,7 +1,7 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.AllocationMethod;
-import databreeze.entity.enums.ExpenseCategory;
+import databreeze.enums.AllocationMethod;
+import databreeze.enums.ExpenseCategory;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -11,8 +11,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

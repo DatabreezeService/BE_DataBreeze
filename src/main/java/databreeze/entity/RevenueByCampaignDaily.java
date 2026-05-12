@@ -1,6 +1,6 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.SourcePlatform;
+import databreeze.enums.SourcePlatform;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -8,8 +8,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.*;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

@@ -1,9 +1,9 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.InsightGeneratedBy;
-import databreeze.entity.enums.InsightSeverity;
-import databreeze.entity.enums.InsightStatus;
-import databreeze.entity.enums.InsightType;
+import databreeze.enums.InsightGeneratedBy;
+import databreeze.enums.InsightSeverity;
+import databreeze.enums.InsightStatus;
+import databreeze.enums.InsightType;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,8 +13,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

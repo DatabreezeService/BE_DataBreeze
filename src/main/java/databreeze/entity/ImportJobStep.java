@@ -1,6 +1,6 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.ImportStepStatus;
+import databreeze.enums.ImportStepStatus;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -10,8 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -45,7 +44,7 @@ public class ImportJobStep {
     private String message;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "metadata", columnDefinition = "jsonb")
+    @Column(name = "metadata", columnDefinition = "json")
     private Map<String, Object> metadata;
 
     @CreationTimestamp

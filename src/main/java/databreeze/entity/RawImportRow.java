@@ -1,6 +1,6 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.RawRowStatus;
+import databreeze.enums.RawRowStatus;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -10,8 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -33,15 +32,15 @@ public class RawImportRow {
     @Column(name = "import_job_id", nullable = false)
     private UUID importJobId;
 
-    @Column(name = "row_number", nullable = false)
+    @Column(name = "source_row_number", nullable = false)
     private Long rowNumber;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "raw_data", nullable = false, columnDefinition = "jsonb")
+    @Column(name = "raw_data", nullable = false, columnDefinition = "json")
     private Map<String, Object> rawData;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "normalized_preview", columnDefinition = "jsonb")
+    @Column(name = "normalized_preview", columnDefinition = "json")
     private Map<String, Object> normalizedPreview;
 
     @Column(name = "row_hash", length = 128)
@@ -53,11 +52,11 @@ public class RawImportRow {
     private RawRowStatus status = RawRowStatus.VALID;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "error_messages", columnDefinition = "jsonb")
+    @Column(name = "error_messages", columnDefinition = "json")
     private Map<String, Object> errorMessages;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "warning_messages", columnDefinition = "jsonb")
+    @Column(name = "warning_messages", columnDefinition = "json")
     private Map<String, Object> warningMessages;
 
     @CreationTimestamp

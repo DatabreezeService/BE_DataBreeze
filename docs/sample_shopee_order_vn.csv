@@ -1,0 +1,4 @@
+Mã đơn hàng,Ngày đặt hàng,Ngày thanh toán,Trạng thái đơn hàng,Tên người mua,SKU phân loại,Tên sản phẩm,Số lượng,Đơn giá,Doanh thu sản phẩm,Giảm giá của Shop,Hoàn tiền,Phí vận chuyển,Phí sàn,Phí thanh toán,Tổng thanh toán,Giá vốn hàng bán,Chi phí Ads phân bổ
+SPXVN001,01/05/2026,02/05/2026,Hoàn thành,nguyenvana,AO-THUN-001,Áo thun basic,2,120000,240000,20000,0,15000,12000,3000,205000,100000,10000
+SPXVN002,03/05/2026,03/05/2026,Hoàn thành,tranthib,GIAY-001,Giày sneaker,1,450000,450000,50000,0,25000,22500,5000,367500,280000,20000
+SPXVN003,04/05/2026,04/05/2026,Đã hủy,levanc,TUI-001,Túi canvas,1,99000,99000,0,99000,0,0,0,0,45000,0

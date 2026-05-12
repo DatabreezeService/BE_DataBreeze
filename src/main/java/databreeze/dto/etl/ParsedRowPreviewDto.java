@@ -1,12 +1,17 @@
 package databreeze.dto.etl;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.Map;
 
-/**
- *
- * Một dòng dữ liệu preview từ Excel/CSV để FE hiện thị trước khi import.
- */
-public record ParsedRowPreviewDto(
-        long rowNumber,
-        Map<String, Object> values
-) {}
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ParsedRowPreviewDto {
+    private long rowNumber;
+    private Map<String, Object> values;
+}

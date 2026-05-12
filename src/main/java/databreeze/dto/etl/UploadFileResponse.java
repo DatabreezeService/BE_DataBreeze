@@ -1,21 +1,25 @@
 package databreeze.dto.etl;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.List;
 import java.util.UUID;
 
-/**
- *
- * Response sau khi upload file. Chưa import vào orders/order_items
- */
-public record UploadFileResponse(
-        UUID uploadId,
-        UUID importJobId,
-        UUID targetSchemaId,
-        long totalRows,
-        int totalColumns,
-        List<String> headers,
-        List<ParsedRowPreviewDto> sampleRows,
-        String nextStep,
-        String message
-) {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class UploadFileResponse {
+    private UUID uploadId;
+    private UUID importJobId;
+    private UUID targetSchemaId;
+    private long totalRows;
+    private int totalColumns;
+    private List<String> headers;
+    private List<ParsedRowPreviewDto> sampleRows;
+    private String nextStep;
+    private String message;
 }

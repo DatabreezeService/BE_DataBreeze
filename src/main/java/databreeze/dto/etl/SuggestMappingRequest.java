@@ -1,10 +1,16 @@
 package databreeze.dto.etl;
 
-/**
- * Request gợi ý mapping. userAi=true chỉ có tác dụng khi APP_AI_ENABLE=true.
- */
-public record SuggestMappingRequest(
-        Boolean useAi
-) {
-    public boolean shoudUseAi() {return Boolean.TRUE.equals( useAi); }
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class SuggestMappingRequest {
+    private Boolean useAi;
+
+    public boolean shouldUseAi() {
+        return Boolean.TRUE.equals(useAi);
+    }
 }

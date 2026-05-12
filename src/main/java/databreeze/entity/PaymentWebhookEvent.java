@@ -1,8 +1,8 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.PaymentProvider;
-import databreeze.entity.enums.WebhookProcessingStatus;
-import databreeze.entity.enums.WebhookVerificationStatus;
+import databreeze.enums.PaymentProvider;
+import databreeze.enums.WebhookProcessingStatus;
+import databreeze.enums.WebhookVerificationStatus;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -11,8 +11,7 @@ import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -43,7 +42,7 @@ public class PaymentWebhookEvent {
     private String signature;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "payload", nullable = false, columnDefinition = "jsonb")
+    @Column(name = "payload", nullable = false, columnDefinition = "json")
     private Map<String, Object> payload;
 
     @Enumerated(EnumType.STRING)

@@ -1,7 +1,7 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.PaymentProvider;
-import databreeze.entity.enums.PaymentStatus;
+import databreeze.enums.PaymentProvider;
+import databreeze.enums.PaymentStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -13,8 +13,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -78,11 +77,11 @@ public class PaymentTransaction {
     private OffsetDateTime expiredAt;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "provider_payload", columnDefinition = "jsonb")
+    @Column(name = "provider_payload", columnDefinition = "json")
     private Map<String, Object> providerPayload;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "webhook_payload", columnDefinition = "jsonb")
+    @Column(name = "webhook_payload", columnDefinition = "json")
     private Map<String, Object> webhookPayload;
 
     @CreationTimestamp

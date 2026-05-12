@@ -1,9 +1,9 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.AuthProvider;
-import databreeze.entity.enums.SystemRole;
-import databreeze.entity.enums.UserStatus;
-import databreeze.entity.enums.UserType;
+import databreeze.enums.AuthProvider;
+import databreeze.enums.SystemRole;
+import databreeze.enums.UserStatus;
+import databreeze.enums.UserType;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -11,8 +11,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

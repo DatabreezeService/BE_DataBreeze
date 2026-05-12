@@ -1,0 +1,48 @@
+{
+  "mappings": [
+    {
+      "sourceColumnName": "Mã đơn hàng",
+      "targetFieldName": "external_order_id",
+      "targetDisplayName": "Mã đơn hàng",
+      "targetDataType": "STRING",
+      "required": true,
+      "confidenceScore": 0.88,
+      "reason": "Khớp theo bộ alias Shopee Việt Nam",
+      "transformRule": { "trim": true, "normalizeUnicode": true },
+      "userConfirmed": true
+    },
+    {
+      "sourceColumnName": "SKU phân loại",
+      "targetFieldName": "sku",
+      "targetDisplayName": "SKU phân loại",
+      "targetDataType": "STRING",
+      "required": true,
+      "confidenceScore": 0.88,
+      "reason": "Khớp theo bộ alias Shopee Việt Nam",
+      "transformRule": { "trim": true, "normalizeUnicode": true },
+      "userConfirmed": true
+    },
+    {
+      "sourceColumnName": "Tên sản phẩm",
+      "targetFieldName": "product_name",
+      "targetDisplayName": "Tên sản phẩm",
+      "targetDataType": "STRING",
+      "required": false,
+      "confidenceScore": 0.88,
+      "reason": "Khớp theo bộ alias Shopee Việt Nam",
+      "transformRule": { "trim": true, "normalizeUnicode": true },
+      "userConfirmed": true
+    },
+    {
+      "sourceColumnName": "Doanh thu sản phẩm",
+      "targetFieldName": "gross_revenue_amount",
+      "targetDisplayName": "Doanh thu sản phẩm",
+      "targetDataType": "DECIMAL",
+      "required": false,
+      "confidenceScore": 0.88,
+      "reason": "Khớp theo bộ alias Shopee Việt Nam",
+      "transformRule": { "trim": true, "normalizeUnicode": true },
+      "userConfirmed": true
+    }
+  ]
+}

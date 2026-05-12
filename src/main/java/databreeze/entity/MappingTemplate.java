@@ -1,8 +1,8 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.DataSourceType;
-import databreeze.entity.enums.SourcePlatform;
-import databreeze.entity.enums.WorkspaceStatus;
+import databreeze.enums.DataSourceType;
+import databreeze.enums.SourcePlatform;
+import databreeze.enums.WorkspaceStatus;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -10,8 +10,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

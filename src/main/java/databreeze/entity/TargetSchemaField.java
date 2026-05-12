@@ -1,6 +1,6 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.TargetDataType;
+import databreeze.enums.TargetDataType;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -11,8 +11,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -64,15 +63,15 @@ public class TargetSchemaField {
     private String formatHint;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "enum_values", columnDefinition = "jsonb")
+    @Column(name = "enum_values", columnDefinition = "json")
     private Map<String, Object> enumValues;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "validation_rule", columnDefinition = "jsonb")
+    @Column(name = "validation_rule", columnDefinition = "json")
     private Map<String, Object> validationRule;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "transform_rule", columnDefinition = "jsonb")
+    @Column(name = "transform_rule", columnDefinition = "json")
     private Map<String, Object> transformRule;
 
     @Column(name = "display_order", nullable = false)

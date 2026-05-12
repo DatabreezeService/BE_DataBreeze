@@ -1,9 +1,10 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.MappingSource;
-import databreeze.entity.enums.TargetDataType;
+import databreeze.enums.MappingSource;
+import databreeze.enums.TargetDataType;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
@@ -12,8 +13,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -49,16 +49,21 @@ public class ImportColumnMapping {
     @Column(name = "confidence_score")
     private BigDecimal confidenceScore;
 
+    @Column(name = "reason", columnDefinition = "TEXT")
+    private String reason;
+
     @Column(name = "user_confirmed", nullable = false)
     @Builder.Default
     private Boolean userConfirmed = false;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "transform_rule", columnDefinition = "jsonb")
+    @Column(name = "transform_rule", columnDefinition = "json")
     private Map<String, Object> transformRule;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
-    private OffsetDateTime createdAt;
+    private LocalDateTime createdAt;
 
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 }

@@ -1,6 +1,6 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.AuditAction;
+import databreeze.enums.AuditAction;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -10,8 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -41,11 +40,11 @@ public class AuditLog {
     private UUID entityId;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "old_value", columnDefinition = "jsonb")
+    @Column(name = "old_value", columnDefinition = "json")
     private Map<String, Object> oldValue;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "new_value", columnDefinition = "jsonb")
+    @Column(name = "new_value", columnDefinition = "json")
     private Map<String, Object> newValue;
 
     @Column(name = "ip_address", length = 100)

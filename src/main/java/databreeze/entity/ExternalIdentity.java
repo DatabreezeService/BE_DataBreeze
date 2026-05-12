@@ -1,6 +1,6 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.AuthProvider;
+import databreeze.enums.AuthProvider;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -10,8 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -38,7 +37,7 @@ public class ExternalIdentity {
     private String providerEmail;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "provider_payload", columnDefinition = "jsonb")
+    @Column(name = "provider_payload", columnDefinition = "json")
     private Map<String, Object> providerPayload;
 
     @CreationTimestamp

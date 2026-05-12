@@ -1,7 +1,7 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.BillingCycle;
-import databreeze.entity.enums.PlanStatus;
+import databreeze.enums.BillingCycle;
+import databreeze.enums.PlanStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -10,8 +10,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

@@ -1,7 +1,7 @@
 package databreeze.entity;
 
-import databreeze.entity.enums.ImportJobStatus;
-import databreeze.entity.enums.ImportJobType;
+import databreeze.enums.ImportJobStatus;
+import databreeze.enums.ImportJobType;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -9,8 +9,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

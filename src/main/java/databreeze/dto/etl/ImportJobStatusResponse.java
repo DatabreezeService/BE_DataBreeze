@@ -1,20 +1,25 @@
 package databreeze.dto.etl;
 
-import databreeze.entity.enums.ImportJobStatus;
+import databreeze.enums.ImportJobStatus;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
-/**
- *  Response polling trạng thái job import.
- */
-public record ImportJobStatusResponse(
-        UUID importJobId,
-        UUID uploadId,
-        UUID targetSchemaId,
-        ImportJobStatus status,
-        long totalRows,
-        long successRows,
-        long failedROws,
-        long warningRows,
-        String errorMessage
-) {}
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ImportJobStatusResponse {
+    private UUID importJobId;
+    private UUID uploadId;
+    private UUID targetSchemaId;
+    private ImportJobStatus status;
+    private long totalRows;
+    private long successRows;
+    private long failedRows;
+    private long warningRows;
+    private String errorMessage;
+}

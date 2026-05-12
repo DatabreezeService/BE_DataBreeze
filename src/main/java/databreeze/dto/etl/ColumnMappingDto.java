@@ -1,28 +1,38 @@
 package databreeze.dto.etl;
 
-import databreeze.entity.enums.TargetDataType;
+import databreeze.enums.TargetDataType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * DTO mapping 1 cột file Excel/CSV sang 1 field chuẩn trong target_schema_fields.
- */
-public record ColumnMappingDto (
-        UUID targetSchemaField,
-        @NotBlank(message = "Tên cột nguồn không được để trống.")
-        String sourceColumnName,
-        @NotBlank(message = "Field đích không được để trống.")
-        String targetFieldName,
-        String targetDisplayName,
-        @NotNull(message = "Kiểu dữ liệu đích là bắt buộc.")
-        TargetDataType targetDataType,
-        Boolean required,
-        BigDecimal confidenceScore,
-        String reason,
-        Map<String, Object> transformRule,
-        Boolean userConfirmed
-) {}
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ColumnMappingDto {
+    private UUID targetSchemaFieldId;
+
+    @NotBlank(message = "Tên cột nguồn không được để trống.")
+    private String sourceColumnName;
+
+    @NotBlank(message = "Field đích không được để trống.")
+    private String targetFieldName;
+
+    private String targetDisplayName;
+
+    @NotNull(message = "Kiểu dữ liệu đích là bắt buộc.")
+    private TargetDataType targetDataType;
+
+    private Boolean required;
+    private BigDecimal confidenceScore;
+    private String reason;
+    private Map<String, Object> transformRule;
+    private Boolean userConfirmed;
+}
