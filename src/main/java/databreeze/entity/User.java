@@ -1,15 +1,27 @@
 package databreeze.entity;
 
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import databreeze.enums.AuthProvider;
 import databreeze.enums.SystemRole;
 import databreeze.enums.UserStatus;
 import databreeze.enums.UserType;
-import jakarta.persistence.*;
-import java.time.OffsetDateTime;
-import java.util.UUID;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
@@ -32,6 +44,21 @@ public class User {
 
     @Column(name = "avatar_url")
     private String avatarUrl;
+
+    @Column(name = "password_hash", length = 255)
+    private String passwordHash;
+
+    @Column(name = "email_verification_otp", length = 120)
+    private String emailVerificationOtp;
+
+    @Column(name = "email_verification_otp_expires_at")
+    private OffsetDateTime emailVerificationOtpExpiresAt;
+
+    @Column(name = "reset_token", length = 120)
+    private String resetToken;
+
+    @Column(name = "reset_token_expires_at")
+    private OffsetDateTime resetTokenExpiresAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "auth_provider", nullable = false, length = 50)
