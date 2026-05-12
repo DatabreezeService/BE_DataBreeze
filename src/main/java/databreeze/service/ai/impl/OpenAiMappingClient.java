@@ -86,7 +86,7 @@ public class OpenAiMappingClient implements AiMappingClient {
                                 Boolean.TRUE.equals(field.getIsRequired()),
                                 item.confidenceScore == null ? BigDecimal.valueOf(0.75) : item.confidenceScore,
                                 item.reason == null ? "AI gợi ý mapping theo ngữ nghĩa cột" : item.reason,
-                                item.transformRule == null ? Map.of("source", MappingSource.AI_SUGGESTED.name()) : item.transformRule,
+                                item.transformRule == null ? Map.of("source", MappingSource.AI.name()) : item.transformRule,
                                 false
                         );
                     })
