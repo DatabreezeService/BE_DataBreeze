@@ -1,6 +1,20 @@
 package databreeze.service.auth.impl;
 
-import databreeze.dto.auth.*;
+import java.time.OffsetDateTime;
+import java.util.NoSuchElementException;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import databreeze.dto.auth.AuthResponse;
+import databreeze.dto.auth.EmailOtpResponse;
+import databreeze.dto.auth.GoogleLoginRequest;
+import databreeze.dto.auth.LoginRequest;
+import databreeze.dto.auth.RegisterRequest;
+import databreeze.dto.auth.ResendOtpRequest;
+import databreeze.dto.auth.VerifyOtpRequest;
 import databreeze.entity.ExternalIdentity;
 import databreeze.entity.User;
 import databreeze.enums.AuthProvider;
@@ -9,16 +23,13 @@ import databreeze.enums.UserStatus;
 import databreeze.enums.UserType;
 import databreeze.repository.ExternalIdentityRepository;
 import databreeze.repository.UserRepository;
-import databreeze.service.auth.*;
+import databreeze.service.auth.AuthService;
+import databreeze.service.auth.EmailService;
+import databreeze.service.auth.GoogleTokenVerifier;
+import databreeze.service.auth.JwtService;
+import databreeze.service.auth.OtpService;
 import databreeze.service.auth.model.GoogleTokenInfo;
 import databreeze.service.workspace.WorkspaceBootstrapService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.OffsetDateTime;
-import java.util.NoSuchElementException;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -60,7 +71,7 @@ public class AuthServiceImpl implements AuthService {
                 .fullName(normalizeName(request.getFullName()))
                 .authProvider(AuthProvider.EMAIL_PASSWORD)
                 .emailVerified(false)
-                .userType(request.getUserType())
+            .userType(UserType.PERSONAL)
                 .systemRole(SystemRole.USER)
                 .status(UserStatus.PENDING_ONBOARDING)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))

@@ -1,6 +1,5 @@
 package databreeze.dto.auth;
 
-import databreeze.enums.UserType;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -18,5 +17,4 @@ public class RegisterRequest {
 
     private String fullName;
 
-    private UserType userType = UserType.PERSONAL;
 }
