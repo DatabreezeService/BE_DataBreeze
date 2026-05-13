@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.time.OffsetDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Implementation tổng điều phối core ETL.
@@ -144,7 +143,7 @@ public class EtlImportServiceImpl implements EtlImportService {
         boolean useAi = request != null && request.shouldUseAi();
 
         List<ColumnMappingDto> mappings = mappingSuggestionService.suggest(parsedFile, targetFields, useAi);
-        mappingSuggestionService.persistMappings(importJobId, mappings, MappingSource.AI_SUGGESTED, false, targetFields);
+        mappingSuggestionService.persistMappings(importJobId, mappings, MappingSource.AI, false, targetFields);
 
         List<String> mappedColumns = mappings.stream().map(ColumnMappingDto::getSourceColumnName).toList();
         List<String> unmappedColumns = parsedFile.getHeaders().stream()
@@ -180,7 +179,7 @@ public class EtlImportServiceImpl implements EtlImportService {
         List<TargetSchemaField> targetFields = targetSchemaService.getActiveFields(job.getTargetSchemaId());
         List<String> missingRequiredFields = targetSchemaService.findMissingRequiredFields(request.getMappings(), targetFields);
 
-        mappingSuggestionService.persistMappings(importJobId, request.getMappings(), MappingSource.MANUAL, true, targetFields);
+        mappingSuggestionService.persistMappings(importJobId, request.getMappings(), MappingSource.USER, true, targetFields);
         job.setStatus(missingRequiredFields.isEmpty() ? ImportJobStatus.VALIDATING : ImportJobStatus.WAITING_FOR_MAPPING);
         importJobRepository.save(job);
 
