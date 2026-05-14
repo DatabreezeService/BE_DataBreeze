@@ -7,10 +7,13 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public interface RevenueDailyRepository extends JpaRepository<RevenueDaily, UUID> {
     @Modifying
     @Query("delete from RevenueDaily r where r.workspaceId = :workspaceId and r.platform = :platform and r.revenueDate between :from and :to")
     int deleteRange(@Param("workspaceId") UUID workspaceId, @Param("platform") SourcePlatform platform, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    List<RevenueDaily> findByWorkspaceIdAndPlatformOrderByRevenueDateDesc(UUID workspaceId, SourcePlatform platform);
 }

@@ -1,8 +1,8 @@
 package databreeze.config;
 
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
-import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.context.annotation.Bean;
@@ -17,17 +17,17 @@ public class OpenApiConfig {
     public OpenAPI dataBreezeOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("DataBreeze API - ETL Shopee Việt Nam")
+                        .title("DataBreeze API - ETL Shopee Viet Nam")
                         .version("MVP-0.1")
-                        .description("API backend lõi cho tải lên Excel/CSV, gợi ý mapping cột tiếng Việt, xác nhận mapping, import dữ liệu Shopee VN và tính doanh thu/lợi nhuận."))
-                .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
-                .schemaRequirement("bearerAuth", new SecurityScheme()
-                        .type(SecurityScheme.Type.HTTP)
-                        .scheme("bearer")
-                        .bearerFormat("JWT"))
+                        .description("API backend cho upload Excel/CSV, mapping, import Shopee VN va tinh doanh thu/loi nhuan."))
+                .components(new Components()
+                        .addSecuritySchemes("bearer", new SecurityScheme()
+                                .type(SecurityScheme.Type.HTTP)
+                                .scheme("bearer")
+                                .bearerFormat("JWT")))
                 .servers(List.of(
-                        new Server().url("http://localhost:8080").description("PostgreSQL local - test Swagger"),
-                        new Server().url("/").description("Môi trường deploy hiện tại")
+                        new Server().url("http://localhost:8080").description("Local"),
+                        new Server().url("/").description("Deploy")
                 ));
     }
 }
