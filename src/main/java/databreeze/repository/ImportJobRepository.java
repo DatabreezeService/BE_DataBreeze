@@ -8,4 +8,7 @@ import java.util.UUID;
 public interface ImportJobRepository extends JpaRepository<ImportJob, UUID> {
     List<ImportJob> findByUploadIdOrderByCreatedAtDesc(UUID uploadId);
 
+    List<ImportJob> findByWorkspaceIdOrderByCreatedAtDesc(UUID workspaceId);
+
+    List<ImportJob> findByWorkspaceIdAndUploadIdOrderByCreatedAtDesc(UUID workspaceId, UUID uploadId);
 }

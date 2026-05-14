@@ -1,35 +1,40 @@
 package databreeze.service.shopee.impl;
 
 import databreeze.dto.shopee.ShopeeImportResult;
-import databreeze.dto.shopee.ShopeeNormalizedOrderRow;
-import databreeze.entity.*;
-import databreeze.enums.*;
+import databreeze.entity.ImportColumnMapping;
+import databreeze.entity.Order;
+import databreeze.entity.OrderItem;
+import databreeze.entity.Product;
+import databreeze.entity.RawImportRow;
+import databreeze.entity.Upload;
+import databreeze.enums.CommercePlatform;
+import databreeze.enums.OrderStatus;
+import databreeze.enums.ProductStatus;
 import databreeze.repository.OrderItemRepository;
 import databreeze.repository.OrderRepository;
 import databreeze.repository.ProductRepository;
-import databreeze.repository.RawImportRowRepository;
 import databreeze.service.shopee.ShopeeOrderImportService;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.*;
+import java.text.Normalizer;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 
-/**
- * Import nghiệp vụ Shopee VN.
- * Lớp này chịu trách nhiệm normalize từng dòng, validate field bắt buộc, upsert order/product/item.
- */
 @Service
 public class ShopeeOrderImportServiceImpl implements ShopeeOrderImportService {
-    @Autowired
-    private RawImportRowRepository rawRowRepository;
+    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     @Autowired
     private OrderRepository orderRepository;
@@ -41,262 +46,373 @@ public class ShopeeOrderImportServiceImpl implements ShopeeOrderImportService {
     private ProductRepository productRepository;
 
     @Override
-    @Transactional
-    public ShopeeImportResult importOrders(Upload upload, List<RawImportRow> rawRows, List<ImportColumnMapping> mappings, boolean skipInvalidRows) {
-        Map<String, ImportColumnMapping> mappingBySourceColumn = mappings.stream()
-                .collect(Collectors.toMap(ImportColumnMapping::getSourceColumnName, Function.identity(), (a, b) -> a, LinkedHashMap::new));
+    public ShopeeImportResult importOrders(
+            Upload upload,
+            List<RawImportRow> rawRows,
+            List<ImportColumnMapping> mappings,
+            boolean skipInvalidRows
+    ) {
+        ShopeeImportResult result = new ShopeeImportResult();
+        if (upload == null || rawRows == null || rawRows.isEmpty()) {
+            return result;
+        }
 
-        long successRows = 0;
-        long failedRows = 0;
-        long warningRows = 0;
-        long createdOrders = 0;
-        long createdOrderItems = 0;
-        long createdProducts = 0;
-        LocalDate minDate = null;
-        LocalDate maxDate = null;
+        Map<String, String> sourceToTargetMap = buildSourceToTargetMap(mappings);
+        Map<String, Order> orderCache = new LinkedHashMap<>();
 
         for (RawImportRow rawRow : rawRows) {
+            result.setTotalRows(result.getTotalRows() + 1);
             try {
-                ShopeeNormalizedOrderRow normalized = normalize(rawRow.getRawData(), mappingBySourceColumn);
-                List<String> errors = validate(normalized);
-                rawRow.setNormalizedPreview(normalized.getNormalizedPreview());
+                Map<String, Object> normalizedRow = normalizeRow(rawRow.getRawData(), sourceToTargetMap);
+                validateRequiredFields(normalizedRow);
 
-                if (!errors.isEmpty()) {
-                    failedRows++;
-                    rawRow.setStatus(RawRowStatus.INVALID);
-                    rawRow.setErrorMessages(Map.of("errors", errors));
-                    rawRowRepository.save(rawRow);
-                    if (!skipInvalidRows) break;
-                    continue;
-                }
+                Order order = resolveOrder(upload, normalizedRow, orderCache, result);
+                Product product = resolveProduct(upload.getWorkspaceId(), normalizedRow, result);
+                createOrderItem(upload.getWorkspaceId(), order, product, normalizedRow, result);
+                updateOrderAmounts(order, normalizedRow);
+                orderRepository.save(order);
+                updateBusinessDateRange(order, result);
 
-                boolean orderExists = orderRepository
-                        .findByWorkspaceIdAndPlatformAndExternalOrderId(upload.getWorkspaceId(), CommercePlatform.SHOPEE, normalized.getExternalOrderId())
-                        .isPresent();
-                Order order = upsertOrder(upload, normalized);
-                if (!orderExists) createdOrders++;
-
-                ProductUpsertResult productResult = upsertProduct(upload.getWorkspaceId(), normalized);
-                if (productResult.isCreated()) createdProducts++;
-
-                replaceOrderItem(upload, order, productResult.getProduct(), normalized);
-                createdOrderItems++;
-
-                rawRow.setStatus(RawRowStatus.IMPORTED);
-                rawRow.setErrorMessages(null);
-                rawRowRepository.save(rawRow);
-
-                LocalDate businessDate = normalized.getPaidAt() != null ? normalized.getPaidAt() : normalized.getOrderDate();
-                if (businessDate != null) {
-                    minDate = minDate == null || businessDate.isBefore(minDate) ? businessDate : minDate;
-                    maxDate = maxDate == null || businessDate.isAfter(maxDate) ? businessDate : maxDate;
-                }
-                successRows++;
+                result.setSuccessRows(result.getSuccessRows() + 1);
             } catch (Exception ex) {
-                failedRows++;
-                rawRow.setStatus(RawRowStatus.INVALID);
-                rawRow.setErrorMessages(Map.of("errors", List.of("Không thể import dòng " + rawRow.getRowNumber() + ": " + ex.getMessage())));
-                rawRowRepository.save(rawRow);
-                if (!skipInvalidRows) break;
+                result.setFailedRows(result.getFailedRows() + 1);
+                if (!skipInvalidRows) {
+                    throw ex;
+                }
             }
         }
 
-        return new ShopeeImportResult(rawRows.size(), successRows, failedRows, warningRows, createdOrders, createdOrderItems, createdProducts, minDate, maxDate);
+        result.setWarningRows(result.getFailedRows());
+        return result;
     }
 
-    private ShopeeNormalizedOrderRow normalize(Map<String, Object> rawData, Map<String, ImportColumnMapping> mappingBySourceColumn) {
+    private Map<String, String> buildSourceToTargetMap(List<ImportColumnMapping> mappings) {
+        Map<String, String> result = new LinkedHashMap<>();
+        if (mappings == null) {
+            return result;
+        }
+        for (ImportColumnMapping mapping : mappings) {
+            if (mapping == null || !Boolean.TRUE.equals(mapping.getUserConfirmed())) {
+                continue;
+            }
+            if (isBlank(mapping.getSourceColumnName()) || isBlank(mapping.getTargetFieldName())) {
+                continue;
+            }
+            result.put(mapping.getSourceColumnName(), mapping.getTargetFieldName());
+        }
+        return result;
+    }
+
+    private Map<String, Object> normalizeRow(Map<String, Object> rawData, Map<String, String> sourceToTargetMap) {
         Map<String, Object> normalized = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : rawData.entrySet()) {
-            ImportColumnMapping mapping = mappingBySourceColumn.get(entry.getKey());
-            if (mapping == null) continue;
-            normalized.put(mapping.getTargetFieldName(), cast(entry.getValue(), mapping.getTargetDataType()));
+        if (rawData == null || sourceToTargetMap == null) {
+            return normalized;
+        }
+        for (Map.Entry<String, String> entry : sourceToTargetMap.entrySet()) {
+            normalized.put(entry.getValue(), rawData.get(entry.getKey()));
+        }
+        return normalized;
+    }
+
+    private void validateRequiredFields(Map<String, Object> row) {
+        if (isBlank(stringValue(row.get("external_order_id")))) {
+            throw new IllegalArgumentException("Missing external_order_id.");
+        }
+        if (isBlank(stringValue(row.get("sku")))) {
+            throw new IllegalArgumentException("Missing sku.");
+        }
+        if (isBlank(stringValue(row.get("product_name")))) {
+            throw new IllegalArgumentException("Missing product_name.");
+        }
+        if (integerValue(row.get("quantity"), 1) <= 0) {
+            throw new IllegalArgumentException("Invalid quantity.");
+        }
+    }
+
+    private Order resolveOrder(
+            Upload upload,
+            Map<String, Object> row,
+            Map<String, Order> orderCache,
+            ShopeeImportResult result
+    ) {
+        String externalOrderId = stringValue(row.get("external_order_id"));
+        Order cached = orderCache.get(externalOrderId);
+        if (cached != null) {
+            return cached;
         }
 
-        BigDecimal gross = money(normalized.get("gross_revenue_amount"));
-        BigDecimal discount = money(normalized.get("discount_amount"));
-        BigDecimal refund = money(normalized.get("refund_amount"));
-        BigDecimal platformFee = money(normalized.get("platform_fee_amount"));
-        BigDecimal transactionFee = money(normalized.get("transaction_fee_amount"));
-        BigDecimal shippingFee = money(normalized.get("shipping_fee_amount"));
-        if (!normalized.containsKey("quantity") || normalized.get("quantity") == null) normalized.put("quantity", 1);
-        if (!normalized.containsKey("net_revenue_amount") || normalized.get("net_revenue_amount") == null) {
-            normalized.put("net_revenue_amount", gross.subtract(discount).subtract(refund).subtract(platformFee).subtract(transactionFee).subtract(shippingFee));
-        }
-
-        return new ShopeeNormalizedOrderRow(
-                string(normalized.get("external_order_id")),
-                string(normalized.get("order_status")),
-                date(normalized.get("order_date")),
-                date(normalized.get("paid_at")),
-                string(normalized.get("buyer_username")),
-                string(normalized.get("sku")),
-                string(normalized.get("product_name")),
-                integer(normalized.get("quantity")),
-                money(normalized.get("unit_price")),
-                money(normalized.get("gross_revenue_amount")),
-                money(normalized.get("discount_amount")),
-                money(normalized.get("refund_amount")),
-                money(normalized.get("shipping_fee_amount")),
-                money(normalized.get("platform_fee_amount")),
-                money(normalized.get("transaction_fee_amount")),
-                money(normalized.get("net_revenue_amount")),
-                money(normalized.get("cogs_amount")),
-                money(normalized.get("allocated_ad_spend_amount")),
-                normalized
+        Optional<Order> existing = orderRepository.findByWorkspaceIdAndPlatformAndExternalOrderId(
+                upload.getWorkspaceId(),
+                CommercePlatform.SHOPEE,
+                externalOrderId
         );
-    }
 
-    private List<String> validate(ShopeeNormalizedOrderRow row) {
-        List<String> errors = new ArrayList<>();
-        if (isBlank(row.getExternalOrderId())) errors.add("Thiếu mã đơn hàng. Hãy mapping cột Shopee sang external_order_id.");
-        if (isBlank(row.getSku())) errors.add("Thiếu SKU phân loại. Hãy mapping cột Shopee sang sku.");
-        return errors;
-    }
+        Order order;
+        if (existing.isPresent()) {
+            order = existing.get();
+            orderItemRepository.deleteByOrderId(order.getId());
+        } else {
+            order = new Order();
+            order.setWorkspaceId(upload.getWorkspaceId());
+            order.setExternalOrderId(externalOrderId);
+            order.setPlatform(CommercePlatform.SHOPEE);
+            result.setCreatedOrders(result.getCreatedOrders() + 1);
+        }
 
-    private Order upsertOrder(Upload upload, ShopeeNormalizedOrderRow row) {
-        Order order = orderRepository
-                .findByWorkspaceIdAndPlatformAndExternalOrderId(upload.getWorkspaceId(), CommercePlatform.SHOPEE, row.getExternalOrderId())
-                .orElseGet(Order::new);
-        order.setWorkspaceId(upload.getWorkspaceId());
         order.setStoreId(upload.getStoreId());
         order.setUploadId(upload.getId());
-        order.setPlatform(CommercePlatform.SHOPEE);
-        order.setExternalOrderId(row.getExternalOrderId());
-        order.setOrderStatus(parseOrderStatus(row.getOrderStatus()));
-        order.setOrderDate(toOffset(row.getOrderDate()));
-        order.setPaidAt(toOffset(row.getPaidAt()));
-        order.setBuyerUsername(row.getBuyerUsername());
-        order.setGrossRevenueAmount(row.getGrossRevenueAmount());
-        order.setDiscountAmount(row.getDiscountAmount());
-        order.setRefundAmount(row.getRefundAmount());
-        order.setNetRevenueAmount(row.getNetRevenueAmount());
-        order.setPlatformFeeAmount(row.getPlatformFeeAmount());
-        order.setTransactionFeeAmount(row.getTransactionFeeAmount());
-        order.setShippingFeeAmount(row.getShippingFeeAmount());
+        order.setOrderStatus(normalizeOrderStatus(stringValue(row.get("order_status"))));
+        order.setOrderDate(parseDateTime(row.get("order_date")));
+        order.setPaidAt(parseDateTime(row.get("paid_at")));
+        order.setBuyerUsername(stringValue(row.get("buyer_username")));
         order.setCurrencyCode("VND");
-        return orderRepository.save(order);
+        resetOrderAmounts(order);
+
+        Order saved = orderRepository.save(order);
+        orderCache.put(externalOrderId, saved);
+        return saved;
     }
 
-    private ProductUpsertResult upsertProduct(UUID workspaceId, ShopeeNormalizedOrderRow row) {
-        Optional<Product> existing = productRepository.findByWorkspaceIdAndSku(workspaceId, row.getSku());
-        if (existing.isPresent()) return new ProductUpsertResult(existing.get(), false);
-        Product product = productRepository.save(Product.builder()
-                .workspaceId(workspaceId)
-                .sku(row.getSku())
-                .name(isBlank(row.getProductName()) ? row.getSku() : row.getProductName())
-                .status(ProductStatus.ACTIVE)
-                .build());
-        return new ProductUpsertResult(product, true);
+    private Product resolveProduct(UUID workspaceId, Map<String, Object> row, ShopeeImportResult result) {
+        String sku = stringValue(row.get("sku"));
+        String productName = stringValue(row.get("product_name"));
+        Optional<Product> existing = productRepository.findByWorkspaceIdAndSku(workspaceId, sku);
+        if (existing.isPresent()) {
+            Product product = existing.get();
+            if (!isBlank(productName) && !Objects.equals(product.getName(), productName)) {
+                product.setName(productName);
+                return productRepository.save(product);
+            }
+            return product;
+        }
+
+        Product product = new Product();
+        product.setWorkspaceId(workspaceId);
+        product.setSku(sku);
+        product.setName(productName);
+        product.setStatus(ProductStatus.ACTIVE);
+        Product saved = productRepository.save(product);
+        result.setCreatedProducts(result.getCreatedProducts() + 1);
+        return saved;
     }
 
-    private void replaceOrderItem(Upload upload, Order order, Product product, ShopeeNormalizedOrderRow row) {
-        orderItemRepository.deleteByOrderId(order.getId());
-        BigDecimal grossProfit = row.getNetRevenueAmount().subtract(row.getCogsAmount());
-        BigDecimal netProfit = grossProfit.subtract(row.getPlatformFeeAmount()).subtract(row.getAllocatedAdSpendAmount());
-        orderItemRepository.save(OrderItem.builder()
-                .workspaceId(upload.getWorkspaceId())
-                .orderId(order.getId())
-                .productId(product.getId())
-                .sku(row.getSku())
-                .productName(row.getProductName())
-                .quantity(row.getQuantity() == null ? 1 : row.getQuantity())
-                .unitPrice(row.getUnitPrice())
-                .grossRevenueAmount(row.getGrossRevenueAmount())
-                .discountAmount(row.getDiscountAmount())
-                .refundAmount(row.getRefundAmount())
-                .netRevenueAmount(row.getNetRevenueAmount())
-                .cogsAmount(row.getCogsAmount())
-                .allocatedPlatformFeeAmount(row.getPlatformFeeAmount())
-                .allocatedAdSpendAmount(row.getAllocatedAdSpendAmount())
-                .grossProfitAmount(grossProfit)
-                .netProfitAmount(netProfit)
-                .build());
+    private void createOrderItem(
+            UUID workspaceId,
+            Order order,
+            Product product,
+            Map<String, Object> row,
+            ShopeeImportResult result
+    ) {
+        int quantity = integerValue(row.get("quantity"), 1);
+        BigDecimal unitPrice = decimalValue(row.get("unit_price"));
+        BigDecimal gross = amountOrComputed(row.get("gross_revenue_amount"), unitPrice.multiply(BigDecimal.valueOf(quantity)));
+        BigDecimal discount = decimalValue(row.get("discount_amount"));
+        BigDecimal refund = decimalValue(row.get("refund_amount"));
+        BigDecimal net = amountOrComputed(row.get("net_revenue_amount"), gross.subtract(discount).subtract(refund));
+        BigDecimal cogs = decimalValue(row.get("cogs_amount"));
+        BigDecimal adSpend = decimalValue(row.get("allocated_ad_spend_amount"));
+        BigDecimal platformFee = decimalValue(row.get("platform_fee_amount"));
+        BigDecimal grossProfit = net.subtract(cogs);
+        BigDecimal netProfit = grossProfit.subtract(platformFee).subtract(adSpend);
+
+        OrderItem item = new OrderItem();
+        item.setWorkspaceId(workspaceId);
+        item.setOrderId(order.getId());
+        item.setProductId(product.getId());
+        item.setSku(stringValue(row.get("sku")));
+        item.setProductName(stringValue(row.get("product_name")));
+        item.setQuantity(quantity);
+        item.setUnitPrice(unitPrice);
+        item.setGrossRevenueAmount(gross);
+        item.setDiscountAmount(discount);
+        item.setRefundAmount(refund);
+        item.setNetRevenueAmount(net);
+        item.setAllocatedPlatformFeeAmount(platformFee);
+        item.setAllocatedAdSpendAmount(adSpend);
+        item.setCogsAmount(cogs);
+        item.setGrossProfitAmount(grossProfit);
+        item.setNetProfitAmount(netProfit);
+        orderItemRepository.save(item);
+        result.setCreatedOrderItems(result.getCreatedOrderItems() + 1);
     }
 
-    private Object cast(Object value, TargetDataType type) {
-        if (value == null) return null;
-        String text = value.toString().trim();
-        if (text.isBlank()) return null;
-        return switch (type) {
-            case INTEGER -> integer(text);
-            case DECIMAL, CURRENCY -> money(text);
-            case DATE, DATETIME -> date(text);
-            case BOOLEAN -> text.equalsIgnoreCase("true") || text.equals("1") || text.equalsIgnoreCase("có");
-            case JSON, STRING -> text;
-        };
+    private void resetOrderAmounts(Order order) {
+        order.setGrossRevenueAmount(BigDecimal.ZERO);
+        order.setDiscountAmount(BigDecimal.ZERO);
+        order.setRefundAmount(BigDecimal.ZERO);
+        order.setNetRevenueAmount(BigDecimal.ZERO);
+        order.setPlatformFeeAmount(BigDecimal.ZERO);
+        order.setTransactionFeeAmount(BigDecimal.ZERO);
+        order.setShippingFeeAmount(BigDecimal.ZERO);
     }
 
-    private OrderStatus parseOrderStatus(String text) {
-        if (text == null) return OrderStatus.UNKNOWN;
-        String value = text.toLowerCase(Locale.ROOT);
-        if (value.contains("hoàn thành") || value.contains("completed")) return OrderStatus.COMPLETED;
-        if (value.contains("hủy") || value.contains("cancel")) return OrderStatus.CANCELLED;
-        if (value.contains("hoàn tiền") || value.contains("refund")) return OrderStatus.REFUNDED;
-        if (value.contains("trả hàng") || value.contains("return")) return OrderStatus.RETURNED;
-        if (value.contains("đang giao") || value.contains("shipped")) return OrderStatus.SHIPPED;
-        if (value.contains("đã thanh toán") || value.contains("paid")) return OrderStatus.PAID;
-        if (value.contains("xử lý") || value.contains("processing")) return OrderStatus.PROCESSING;
+    private void updateOrderAmounts(Order order, Map<String, Object> row) {
+        int quantity = integerValue(row.get("quantity"), 1);
+        BigDecimal unitPrice = decimalValue(row.get("unit_price"));
+        BigDecimal gross = amountOrComputed(row.get("gross_revenue_amount"), unitPrice.multiply(BigDecimal.valueOf(quantity)));
+        BigDecimal discount = decimalValue(row.get("discount_amount"));
+        BigDecimal refund = decimalValue(row.get("refund_amount"));
+        BigDecimal net = amountOrComputed(row.get("net_revenue_amount"), gross.subtract(discount).subtract(refund));
+
+        order.setGrossRevenueAmount(money(order.getGrossRevenueAmount()).add(gross));
+        order.setDiscountAmount(money(order.getDiscountAmount()).add(discount));
+        order.setRefundAmount(money(order.getRefundAmount()).add(refund));
+        order.setNetRevenueAmount(money(order.getNetRevenueAmount()).add(net));
+        order.setPlatformFeeAmount(money(order.getPlatformFeeAmount()).add(decimalValue(row.get("platform_fee_amount"))));
+        order.setTransactionFeeAmount(money(order.getTransactionFeeAmount()).add(decimalValue(row.get("transaction_fee_amount"))));
+        order.setShippingFeeAmount(money(order.getShippingFeeAmount()).add(decimalValue(row.get("shipping_fee_amount"))));
+    }
+
+    private void updateBusinessDateRange(Order order, ShopeeImportResult result) {
+        LocalDate businessDate = null;
+        if (order.getPaidAt() != null) {
+            businessDate = order.getPaidAt().toLocalDate();
+        } else if (order.getOrderDate() != null) {
+            businessDate = order.getOrderDate().toLocalDate();
+        }
+        if (businessDate == null) {
+            return;
+        }
+        if (result.getMinBusinessDate() == null || businessDate.isBefore(result.getMinBusinessDate())) {
+            result.setMinBusinessDate(businessDate);
+        }
+        if (result.getMaxBusinessDate() == null || businessDate.isAfter(result.getMaxBusinessDate())) {
+            result.setMaxBusinessDate(businessDate);
+        }
+    }
+
+    private OrderStatus normalizeOrderStatus(String value) {
+        String normalized = normalizeText(value);
+        if (normalized.isBlank()) {
+            return OrderStatus.UNKNOWN;
+        }
+        if (normalized.contains("hoan thanh") || normalized.contains("completed")) {
+            return OrderStatus.COMPLETED;
+        }
+        if (normalized.contains("huy") || normalized.contains("cancel")) {
+            return OrderStatus.CANCELLED;
+        }
+        if (normalized.contains("hoan tien") || normalized.contains("refund")) {
+            return OrderStatus.REFUNDED;
+        }
+        if (normalized.contains("tra hang") || normalized.contains("return")) {
+            return OrderStatus.RETURNED;
+        }
+        if (normalized.contains("dang giao") || normalized.contains("shipped")) {
+            return OrderStatus.SHIPPED;
+        }
+        if (normalized.contains("cho") || normalized.contains("pending")) {
+            return OrderStatus.PENDING;
+        }
         return OrderStatus.UNKNOWN;
     }
 
-    private OffsetDateTime toOffset(LocalDate date) {
-        return date == null ? null : date.atStartOfDay().atOffset(ZoneOffset.ofHours(7));
-    }
-
-    private LocalDate date(Object value) {
-        if (value == null) return null;
-        if (value instanceof LocalDate d) return d;
-        if (value instanceof LocalDateTime dt) return dt.toLocalDate();
-        if (value instanceof OffsetDateTime odt) return odt.toLocalDate();
-        String text = value.toString().trim();
-        if (text.isBlank()) return null;
-        List<DateTimeFormatter> formats = List.of(
-                DateTimeFormatter.ISO_LOCAL_DATE,
-                DateTimeFormatter.ofPattern("d/M/yyyy"),
-                DateTimeFormatter.ofPattern("d-M-yyyy"),
-                DateTimeFormatter.ofPattern("M/d/yy"),
-                DateTimeFormatter.ofPattern("M/d/yyyy")
-        );
-        for (DateTimeFormatter formatter : formats) {
-            try { return LocalDate.parse(text, formatter); } catch (Exception ignored) {}
+    private OffsetDateTime parseDateTime(Object value) {
+        String text = stringValue(value);
+        if (isBlank(text)) {
+            return null;
         }
-        try { return LocalDate.of(1899, 12, 30).plusDays((long) Double.parseDouble(text)); } catch (Exception ignored) {}
+
+        List<DateTimeFormatter> dateTimeFormatters = List.of(
+                DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"),
+                DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+        );
+        for (DateTimeFormatter formatter : dateTimeFormatters) {
+            try {
+                return LocalDateTime.parse(text, formatter).atZone(VIETNAM_ZONE).toOffsetDateTime();
+            } catch (Exception ignored) {
+            }
+        }
+
+        List<DateTimeFormatter> dateFormatters = List.of(
+                DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        );
+        for (DateTimeFormatter formatter : dateFormatters) {
+            try {
+                return LocalDate.parse(text, formatter).atStartOfDay(VIETNAM_ZONE).toOffsetDateTime();
+            } catch (Exception ignored) {
+            }
+        }
         return null;
     }
 
-    private BigDecimal money(Object value) {
-        if (value == null) return BigDecimal.ZERO;
-        if (value instanceof BigDecimal decimal) return decimal;
-        if (value instanceof Number number) return BigDecimal.valueOf(number.doubleValue());
-        String text = value.toString().trim();
-        if (text.isBlank()) return BigDecimal.ZERO;
-        String cleaned = text.replaceAll("[^0-9,.-]", "");
-        if (cleaned.contains(",") && cleaned.contains(".")) cleaned = cleaned.replace(".", "").replace(",", ".");
-        else cleaned = cleaned.replace(",", ".");
-        if (cleaned.isBlank() || cleaned.equals("-")) return BigDecimal.ZERO;
-        return new BigDecimal(cleaned);
+    private Integer integerValue(Object value, int fallback) {
+        if (value == null) {
+            return fallback;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        String text = String.valueOf(value).replace(",", "").replace(".", "").trim();
+        if (text.isBlank()) {
+            return fallback;
+        }
+        try {
+            return Integer.parseInt(text);
+        } catch (Exception ex) {
+            return fallback;
+        }
     }
 
-    private Integer integer(Object value) {
-        if (value == null) return null;
-        if (value instanceof Number number) return number.intValue();
-        String text = value.toString().trim();
-        if (text.isBlank()) return null;
-        return (int) Math.round(Double.parseDouble(text.replaceAll("[^0-9,.-]", "").replace(",", ".")));
+    private BigDecimal amountOrComputed(Object rawValue, BigDecimal computed) {
+        BigDecimal parsed = decimalValue(rawValue);
+        return parsed.signum() == 0 ? money(computed) : parsed;
     }
 
-    private String string(Object value) {
-        return value == null ? null : value.toString().trim();
+    private BigDecimal decimalValue(Object value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
+        }
+        if (value instanceof BigDecimal decimal) {
+            return decimal;
+        }
+        if (value instanceof Number number) {
+            return BigDecimal.valueOf(number.doubleValue());
+        }
+
+        String text = String.valueOf(value)
+                .replace("₫", "")
+                .replace("đ", "")
+                .replace("Đ", "")
+                .replace("VND", "")
+                .replace(",", "")
+                .trim();
+        if (text.isBlank()) {
+            return BigDecimal.ZERO;
+        }
+        try {
+            return new BigDecimal(text);
+        } catch (Exception ex) {
+            return BigDecimal.ZERO;
+        }
+    }
+
+    private BigDecimal money(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private String stringValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        String text = String.valueOf(value).trim();
+        return text.isBlank() ? null : text;
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = Normalizer.normalize(value.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT);
+        return normalized.replaceAll("[^a-z0-9]+", " ").replaceAll("\\s+", " ").trim();
     }
 
     private boolean isBlank(String value) {
-        return value == null || value.trim().isBlank();
-    }
-
-    @Data
-    @AllArgsConstructor
-    private static class ProductUpsertResult {
-        private Product product;
-        private boolean created;
+        return value == null || value.isBlank();
     }
 }

@@ -101,6 +101,8 @@ public class MappingSuggestionServiceImpl implements MappingSuggestionService {
             return;
         }
 
+        importColumnMappingRepository.deleteByImportJobId(importJobId);
+
         Map<String, TargetSchemaField> targetFieldMap = buildTargetFieldMap(targetFields);
         List<ImportColumnMapping> entities = new ArrayList<>();
 
@@ -116,13 +118,15 @@ public class MappingSuggestionServiceImpl implements MappingSuggestionService {
             TargetSchemaField targetField = targetFieldMap.get(dto.getTargetFieldName());
 
             ImportColumnMapping entity = new ImportColumnMapping();
-            entity.setId(UUID.randomUUID());
             entity.setImportJobId(importJobId);
             entity.setSourceColumnName(dto.getSourceColumnName());
             entity.setTargetFieldName(dto.getTargetFieldName());
 
             if (targetField != null) {
                 entity.setTargetSchemaFieldId(targetField.getId());
+                entity.setTargetDataType(targetField.getDataType());
+            } else {
+                entity.setTargetDataType(dto.getTargetDataType());
             }
 
             entity.setMappingSource(source);
