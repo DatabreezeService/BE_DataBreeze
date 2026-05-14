@@ -1,14 +1,14 @@
 package databreeze.config;
 
-import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.info.Info;
-import io.swagger.v3.oas.models.security.SecurityRequirement;
-import io.swagger.v3.oas.models.security.SecurityScheme;
-import io.swagger.v3.oas.models.servers.Server;
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.List;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
 
 @Configuration
 public class OpenApiConfig {
@@ -20,7 +20,6 @@ public class OpenApiConfig {
                         .title("DataBreeze API - ETL Shopee Việt Nam")
                         .version("MVP-0.1")
                         .description("API backend lõi cho tải lên Excel/CSV, gợi ý mapping cột tiếng Việt, xác nhận mapping, import dữ liệu Shopee VN và tính doanh thu/lợi nhuận."))
-                .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
                 .schemaRequirement("bearerAuth", new SecurityScheme()
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
