@@ -136,7 +136,7 @@ public class AdminUserController {
         }
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=users.csv")
-                .contentType(MediaType.valueOf("text/csv"))
+            .contentType(MediaType.valueOf("text/csv"))
                 .body(csv);
     }
 
