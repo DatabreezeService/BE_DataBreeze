@@ -30,7 +30,7 @@ public class AuditLog {
     private UUID actorUserId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "action", nullable = false, length = 50)
+    @Column(name = "action", nullable = false, length = 50, columnDefinition = "varchar(50)")
     private AuditAction action;
 
     @Column(name = "entity_type", nullable = false, length = 100)
