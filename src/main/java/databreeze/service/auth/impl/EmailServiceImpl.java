@@ -1,8 +1,9 @@
 package databreeze.service.auth.impl;
 
-import databreeze.service.auth.EmailService;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
+import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -10,9 +11,9 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
-import java.nio.charset.StandardCharsets;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
+import databreeze.service.auth.EmailService;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 
 @Service
 public class EmailServiceImpl implements EmailService {
@@ -50,6 +51,31 @@ public class EmailServiceImpl implements EmailService {
             mailSender.send(message);
         } catch (MessagingException ex) {
             throw new IllegalStateException("Gửi email xác thực thất bại. Vui lòng thử lại.", ex);
+        }
+    }
+
+    @Override
+    public void sendResetPasswordOtp(String email, String fullName, String otp, OffsetDateTime expiresAt) {
+        Context context = new Context();
+        context.setVariable("fullName", fullName == null || fullName.isBlank() ? email : fullName);
+        context.setVariable("otp", otp);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
+        context.setVariable("expiresAtText", expiresAt == null ? "" : formatter.format(expiresAt));
+
+        String html = templateEngine.process("emails/reset-password-otp", context);
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, StandardCharsets.UTF_8.name());
+            helper.setTo(email);
+            helper.setSubject("DataBreeze - Ma OTP dat lai mat khau");
+            helper.setText(html, true);
+            if (mailFrom != null && !mailFrom.isBlank()) {
+                helper.setFrom(mailFrom);
+            }
+            mailSender.send(message);
+        } catch (MessagingException ex) {
+            throw new IllegalStateException("Gửi email đặt lại mật khẩu thất bại. Vui lòng thử lại.", ex);
         }
     }
 }

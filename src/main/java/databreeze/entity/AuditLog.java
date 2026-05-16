@@ -1,14 +1,26 @@
 package databreeze.entity;
 
-import databreeze.enums.AuditAction;
-import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
-import lombok.*;
+
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+
+import databreeze.enums.AuditAction;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
@@ -30,7 +42,7 @@ public class AuditLog {
     private UUID actorUserId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "action", nullable = false, length = 50)
+    @Column(name = "action", nullable = false, length = 50, columnDefinition = "varchar(50)")
     private AuditAction action;
 
     @Column(name = "entity_type", nullable = false, length = 100)

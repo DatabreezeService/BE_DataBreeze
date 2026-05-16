@@ -10,11 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import databreeze.dto.auth.AuthResponse;
 import databreeze.dto.auth.EmailOtpResponse;
+import databreeze.dto.auth.ForgotPasswordRequest;
 import databreeze.dto.auth.GoogleLoginRequest;
 import databreeze.dto.auth.LoginRequest;
 import databreeze.dto.auth.RegisterRequest;
 import databreeze.dto.auth.ResendOtpRequest;
+import databreeze.dto.auth.ResetPasswordRequest;
 import databreeze.dto.auth.VerifyOtpRequest;
+import databreeze.dto.auth.VerifyResetOtpRequest;
 import databreeze.entity.ExternalIdentity;
 import databreeze.entity.User;
 import databreeze.enums.AuthProvider;
@@ -201,6 +204,59 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    @Override
+    @Transactional
+    public EmailOtpResponse forgotPassword(ForgotPasswordRequest request) {
+        User user = userRepository.findByEmailIgnoreCase(normalizeEmail(request.getEmail()))
+                .orElseThrow(() -> new NoSuchElementException("Khong tim thay tai khoan."));
+
+        if (user.getStatus() == UserStatus.SUSPENDED || user.getStatus() == UserStatus.DELETED) {
+            throw new IllegalStateException("Tai khoan dang bi khoa hoac da bi xoa.");
+        }
+
+        sendResetOtp(user);
+
+        return EmailOtpResponse.builder()
+                .email(user.getEmail())
+                .expiresAt(user.getResetTokenExpiresAt())
+                .message("Da gui ma OTP dat lai mat khau. Vui long kiem tra hop thu.")
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void verifyResetOtp(VerifyResetOtpRequest request) {
+        User user = userRepository.findByEmailIgnoreCase(normalizeEmail(request.getEmail()))
+                .orElseThrow(() -> new NoSuchElementException("Khong tim thay tai khoan."));
+
+        validateResetOtp(user, request.getOtp());
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse resetPassword(ResetPasswordRequest request) {
+        User user = userRepository.findByEmailIgnoreCase(normalizeEmail(request.getEmail()))
+                .orElseThrow(() -> new NoSuchElementException("Khong tim thay tai khoan."));
+
+        if (user.getStatus() == UserStatus.SUSPENDED || user.getStatus() == UserStatus.DELETED) {
+            throw new IllegalStateException("Tai khoan dang bi khoa hoac da bi xoa.");
+        }
+
+        validateResetOtp(user, request.getOtp());
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setResetToken(null);
+        user.setResetTokenExpiresAt(null);
+        user.setEmailVerified(true);
+        user.setAuthProvider(AuthProvider.EMAIL_PASSWORD);
+        user.setStatus(UserStatus.ACTIVE);
+        user.setLastLoginAt(OffsetDateTime.now());
+        userRepository.save(user);
+        workspaceBootstrapService.getOrCreatePersonalWorkspace(user);
+
+        return buildAuthResponse(user);
+    }
+
     private void sendOtpEmail(User user) {
         String otp = otpService.generateOtp();
         user.setEmailVerificationOtp(otpService.hashOtp(otp));
@@ -212,6 +268,24 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         emailService.sendVerificationOtp(user.getEmail(), user.getFullName(), otp, user.getEmailVerificationOtpExpiresAt());
+    }
+
+    private void sendResetOtp(User user) {
+        String otp = otpService.generateOtp();
+        user.setResetToken(otpService.hashOtp(otp));
+        user.setResetTokenExpiresAt(otpService.expiryFromNow());
+        userRepository.save(user);
+
+        emailService.sendResetPasswordOtp(user.getEmail(), user.getFullName(), otp, user.getResetTokenExpiresAt());
+    }
+
+    private void validateResetOtp(User user, String rawOtp) {
+        if (user.getResetTokenExpiresAt() == null || OffsetDateTime.now().isAfter(user.getResetTokenExpiresAt())) {
+            throw new IllegalStateException("OTP da het han. Vui long gui lai.");
+        }
+        if (!otpService.matches(rawOtp, user.getResetToken())) {
+            throw new IllegalStateException("OTP khong dung.");
+        }
     }
 
     private void ensureExternalIdentity(User user, GoogleTokenInfo tokenInfo) {
