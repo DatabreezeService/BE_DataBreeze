@@ -22,4 +22,5 @@ public class ImportJobStatusResponse {
     private long failedRows;
     private long warningRows;
     private String errorMessage;
+    private String errorReportDownloadUrl;
 }

@@ -68,6 +68,12 @@ public class ImportJob {
     @Column(name = "error_message")
     private String errorMessage;
 
+    @Column(name = "error_report_storage_key", length = 500)
+    private String errorReportStorageKey;
+
+    @Column(name = "error_report_generated_at")
+    private OffsetDateTime errorReportGeneratedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
