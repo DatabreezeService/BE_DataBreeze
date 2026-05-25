@@ -8,6 +8,7 @@ import databreeze.repository.ImportColumnMappingRepository;
 import databreeze.repository.ImportJobRepository;
 import databreeze.repository.UploadRepository;
 import databreeze.service.analytics.ShopeeAnalyticsService;
+import databreeze.service.billing.UsageMeterService;
 import databreeze.service.etl.*;
 import databreeze.service.shopee.ShopeeOrderImportService;
 import databreeze.service.workspace.WorkspaceAccessService;
@@ -47,6 +48,9 @@ public class EtlImportServiceImpl implements EtlImportService {
     private RawRowService rawRowService;
 
     @Autowired
+    private ImportErrorReportService importErrorReportService;
+
+    @Autowired
     private MappingSuggestionService mappingSuggestionService;
 
     @Autowired
@@ -57,6 +61,9 @@ public class EtlImportServiceImpl implements EtlImportService {
 
     @Autowired
     private WorkspaceAccessService workspaceAccessService;
+
+    @Autowired
+    private UsageMeterService usageMeterService;
 
     @Value("${app.storage.local-dir:./storage/uploads}")
     private String storageDir;
@@ -80,6 +87,8 @@ public class EtlImportServiceImpl implements EtlImportService {
         if (parsedFile.getHeaders().isEmpty()) {
             throw new IllegalArgumentException("File không có header. Vui lòng kiểm tra dòng đầu tiên của file Excel/CSV.");
         }
+
+        usageMeterService.recordUpload(workspaceId, actorUserId, file.getSize());
 
         String safeFileName = safeFileName(file.getOriginalFilename());
         String storageKey = UUID.randomUUID() + "-" + safeFileName;
@@ -141,8 +150,20 @@ public class EtlImportServiceImpl implements EtlImportService {
         ParsedFile parsedFile = rawRowService.toParsedFile(importJobId);
         List<TargetSchemaField> targetFields = targetSchemaService.getActiveFields(job.getTargetSchemaId());
         boolean useAi = request != null && request.shouldUseAi();
+        if (useAi) {
+            usageMeterService.ensureAiMappingAvailable(workspaceId, actorUserId);
+        }
 
-        List<ColumnMappingDto> mappings = mappingSuggestionService.suggest(parsedFile, targetFields, useAi);
+        MappingSuggestionResult suggestionResult = mappingSuggestionService.suggest(parsedFile, targetFields, useAi);
+        if (useAi && suggestionResult.isAiCalled()) {
+            usageMeterService.recordAiMapping(
+                    workspaceId,
+                    actorUserId,
+                    suggestionResult.getTokenUsage().getInputTokens(),
+                    suggestionResult.getTokenUsage().getOutputTokens()
+            );
+        }
+        List<ColumnMappingDto> mappings = suggestionResult.getMappings();
         mappingSuggestionService.persistMappings(importJobId, mappings, MappingSource.AI, false, targetFields);
 
         List<String> mappedColumns = mappings.stream().map(ColumnMappingDto::getSourceColumnName).toList();
@@ -163,6 +184,9 @@ public class EtlImportServiceImpl implements EtlImportService {
                 unmappedColumns,
                 missingRequiredFields,
                 useAi ? "RULE_SHOPEE_VN_PLUS_AI" : "RULE_SHOPEE_VN",
+                suggestionResult.getTokenUsage().getInputTokens(),
+                suggestionResult.getTokenUsage().getOutputTokens(),
+                suggestionResult.getTokenUsage().getTotalTokens(),
                 "FE hiển thị mapping cho user xác nhận, sau đó gọi confirm-mapping.",
                 missingRequiredFields.isEmpty()
                         ? "Đã gợi ý mapping. Vui lòng kiểm tra và xác nhận trước khi import."
@@ -219,7 +243,8 @@ public class EtlImportServiceImpl implements EtlImportService {
         try {
             boolean skipInvalidRows = request == null || request.shouldSkipInvalidRows();
             ShopeeImportResult result = shopeeOrderImportService.importOrders(upload, rawRowService.findRows(importJobId), mappings, skipInvalidRows);
-            shopeeAnalyticsService.recalculateDaily(upload.getWorkspaceId(), upload.getStoreId(), result.getMinBusinessDate(), result.getMaxBusinessDate());
+            usageMeterService.recordImportedRows(workspaceId, actorUserId, result.getSuccessRows());
+            var dailyResult = shopeeAnalyticsService.recalculateDaily(upload.getWorkspaceId(), upload.getStoreId(), result.getMinBusinessDate(), result.getMaxBusinessDate());
 
             job.setStatus(ImportJobStatus.COMPLETED);
             job.setCompletedAt(OffsetDateTime.now());
@@ -228,27 +253,52 @@ public class EtlImportServiceImpl implements EtlImportService {
             job.setFailedRows(result.getFailedRows());
             job.setWarningRows(result.getWarningRows());
             job.setErrorMessage(null);
+            attachErrorReport(job);
             importJobRepository.save(job);
 
-            return new RunImportResponse(
-                    importJobId,
-                    job.getStatus(),
-                    result.getTotalRows(),
-                    result.getSuccessRows(),
-                    result.getFailedRows(),
-                    result.getWarningRows(),
-                    result.getCreatedOrders(),
-                    result.getCreatedOrderItems(),
-                    result.getCreatedProducts(),
-                    "FE có thể gọi API dashboard revenue/profit sau khi build phase tiếp theo.",
-                    "Import Shopee hoàn tất. Dữ liệu đã được ghi vào orders/order_items/products và tổng hợp daily."
-            );
+            return RunImportResponse.builder()
+                    .importJobId(importJobId)
+                    .storeId(upload.getStoreId())
+                    .status(job.getStatus())
+                    .totalRows(result.getTotalRows())
+                    .successRows(result.getSuccessRows())
+                    .failedRows(result.getFailedRows())
+                    .warningRows(result.getWarningRows())
+                    .createdOrders(result.getCreatedOrders())
+                    .createdOrderItems(result.getCreatedOrderItems())
+                    .createdProducts(result.getCreatedProducts())
+                    .minBusinessDate(result.getMinBusinessDate())
+                    .maxBusinessDate(result.getMaxBusinessDate())
+                    .revenueDailyRows(dailyResult.getRevenueDailyRows())
+                    .profitDailyRows(dailyResult.getProfitDailyRows())
+                    .errorReportDownloadUrl(errorReportUrl(workspaceId, job))
+                    .dashboardUrl(dashboardUrl(workspaceId, upload.getStoreId(), result.getMinBusinessDate(), result.getMaxBusinessDate()))
+                    .processedDataUrl(processedDataUrl(workspaceId, upload.getStoreId(), result.getMinBusinessDate(), result.getMaxBusinessDate()))
+                    .insightGenerateUrl("/api/v1/workspaces/" + workspaceId + "/insights/generate")
+                    .nextStep("FE goi dashboardUrl de hien KPI/chart/top products, goi insightGenerateUrl de tao insight tu cung storeId va range ngay.")
+                    .message("Import Shopee hoan tat. Du lieu da ghi vao orders/order_items/products va tong hop daily neu co ngay kinh doanh.")
+                    .build();
         } catch (Exception ex) {
             job.setStatus(ImportJobStatus.FAILED);
             job.setFailedAt(OffsetDateTime.now());
             job.setErrorMessage(ex.getMessage());
+            job.setFailedRows(Math.max(job.getFailedRows(), 1L));
+            attachErrorReport(job);
             importJobRepository.save(job);
-            throw ex;
+            return new RunImportResponse(
+                    importJobId,
+                    job.getStatus(),
+                    job.getTotalRows(),
+                    job.getSuccessRows(),
+                    job.getFailedRows(),
+                    job.getWarningRows(),
+                    0,
+                    0,
+                    0,
+                    errorReportUrl(workspaceId, job),
+                    "Tải file Excel lỗi, sửa dữ liệu nguồn rồi chạy lại import.",
+                    "Import thất bại. Hệ thống đã ghi lý do lỗi theo từng dòng nếu có thể."
+            );
         }
     }
 
@@ -267,8 +317,50 @@ public class EtlImportServiceImpl implements EtlImportService {
                 job.getSuccessRows(),
                 job.getFailedRows(),
                 job.getWarningRows(),
-                job.getErrorMessage()
+                job.getErrorMessage(),
+                errorReportUrl(workspaceId, job)
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UploadListItemResponse> listUploads(UUID workspaceId, UUID actorUserId, UUID storeId, int limit) {
+        workspaceAccessService.requireReadAccess(workspaceId, actorUserId);
+        workspaceAccessService.requireStoreBelongsToWorkspace(workspaceId, storeId);
+        int safeLimit = safeLimit(limit);
+        List<Upload> uploads = storeId == null
+                ? uploadRepository.findByWorkspaceIdOrderByCreatedAtDesc(workspaceId)
+                : uploadRepository.findByWorkspaceIdAndStoreIdOrderByCreatedAtDesc(workspaceId, storeId);
+        return uploads.stream().limit(safeLimit).map(this::toUploadListItem).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UploadListItemResponse getUpload(UUID workspaceId, UUID actorUserId, UUID uploadId) {
+        workspaceAccessService.requireReadAccess(workspaceId, actorUserId);
+        Upload upload = uploadRepository.findById(uploadId)
+                .orElseThrow(() -> new NoSuchElementException("Khong tim thay upload."));
+        if (!workspaceId.equals(upload.getWorkspaceId())) {
+            throw new SecurityException("Upload khong thuoc workspace hien tai.");
+        }
+        return toUploadListItem(upload);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ImportJobListItemResponse> listJobs(UUID workspaceId, UUID actorUserId, UUID uploadId, int limit) {
+        workspaceAccessService.requireReadAccess(workspaceId, actorUserId);
+        int safeLimit = safeLimit(limit);
+        List<ImportJob> jobs = uploadId == null
+                ? importJobRepository.findByWorkspaceIdOrderByCreatedAtDesc(workspaceId)
+                : importJobRepository.findByWorkspaceIdAndUploadIdOrderByCreatedAtDesc(workspaceId, uploadId);
+        return jobs.stream().limit(safeLimit).map(job -> toImportJobListItem(workspaceId, job)).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Path getErrorReport(UUID workspaceId, UUID actorUserId, UUID importJobId) {
+        return importErrorReportService.resolveReport(workspaceId, actorUserId, importJobId);
     }
 
     private void requireJobInWorkspace(ImportJob job, UUID workspaceId) {
@@ -293,4 +385,92 @@ public class EtlImportServiceImpl implements EtlImportService {
         String name = originalFileName == null || originalFileName.isBlank() ? fallback : originalFileName;
         return name.replaceAll("[^a-zA-Z0-9._-]", "_");
     }
+
+    private void attachErrorReport(ImportJob job) {
+        try {
+            importErrorReportService.generateReport(job).ifPresent(storageKey -> {
+                job.setErrorReportStorageKey(storageKey);
+                job.setErrorReportGeneratedAt(OffsetDateTime.now());
+            });
+        } catch (IOException ex) {
+            job.setErrorMessage((job.getErrorMessage() == null ? "" : job.getErrorMessage() + " | ")
+                    + "Không thể tạo file Excel lỗi: " + ex.getMessage());
+        }
+    }
+
+    private String errorReportUrl(UUID workspaceId, ImportJob job) {
+        if (job.getErrorReportStorageKey() == null || job.getErrorReportStorageKey().isBlank()) {
+            return null;
+        }
+        return "/api/v1/workspaces/" + workspaceId + "/etl/jobs/" + job.getId() + "/error-report";
+    }
+
+    private String dashboardUrl(UUID workspaceId, UUID storeId, java.time.LocalDate fromDate, java.time.LocalDate toDate) {
+        return "/api/v1/workspaces/" + workspaceId + "/dashboard/shopee" + dateAndStoreQuery(storeId, fromDate, toDate);
+    }
+
+    private String processedDataUrl(UUID workspaceId, UUID storeId, java.time.LocalDate fromDate, java.time.LocalDate toDate) {
+        return "/api/v1/workspaces/" + workspaceId + "/processed-data/shopee" + dateAndStoreQuery(storeId, fromDate, toDate);
+    }
+
+    private String dateAndStoreQuery(UUID storeId, java.time.LocalDate fromDate, java.time.LocalDate toDate) {
+        List<String> params = new ArrayList<>();
+        if (storeId != null) {
+            params.add("storeId=" + storeId);
+        }
+        if (fromDate != null) {
+            params.add("fromDate=" + fromDate);
+        }
+        if (toDate != null) {
+            params.add("toDate=" + toDate);
+        }
+        return params.isEmpty() ? "" : "?" + String.join("&", params);
+    }
+
+    private int safeLimit(int limit) {
+        if (limit <= 0) {
+            return 50;
+        }
+        return Math.min(limit, 200);
+    }
+
+    private UploadListItemResponse toUploadListItem(Upload upload) {
+        return UploadListItemResponse.builder()
+                .id(upload.getId())
+                .workspaceId(upload.getWorkspaceId())
+                .storeId(upload.getStoreId())
+                .uploadedBy(upload.getUploadedBy())
+                .type(upload.getDataSourceType())
+                .platform(upload.getPlatform())
+                .originalFilename(upload.getOriginalFileName())
+                .fileSizeBytes(upload.getFileSizeBytes())
+                .totalRows(upload.getTotalRows())
+                .totalColumns(upload.getTotalColumns() == null ? null : upload.getTotalColumns().longValue())
+                .status(upload.getStatus())
+                .createdAt(upload.getCreatedAt())
+                .updatedAt(upload.getUpdatedAt())
+                .build();
+    }
+
+    private ImportJobListItemResponse toImportJobListItem(UUID workspaceId, ImportJob job) {
+        return ImportJobListItemResponse.builder()
+                .id(job.getId())
+                .workspaceId(job.getWorkspaceId())
+                .uploadId(job.getUploadId())
+                .targetSchemaId(job.getTargetSchemaId())
+                .status(job.getStatus())
+                .jobType(job.getJobType())
+                .totalRows(job.getTotalRows())
+                .successRows(job.getSuccessRows())
+                .failedRows(job.getFailedRows())
+                .warningRows(job.getWarningRows())
+                .errorMessage(job.getErrorMessage())
+                .startedAt(job.getStartedAt())
+                .createdAt(job.getCreatedAt())
+                .completedAt(job.getCompletedAt())
+                .failedAt(job.getFailedAt())
+                .errorReportDownloadUrl(errorReportUrl(workspaceId, job))
+                .build();
+    }
+
 }

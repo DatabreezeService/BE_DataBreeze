@@ -12,8 +12,20 @@ import java.util.UUID;
 
 public interface RevenueDailyRepository extends JpaRepository<RevenueDaily, UUID> {
     @Modifying
-    @Query("delete from RevenueDaily r where r.workspaceId = :workspaceId and r.platform = :platform and r.revenueDate between :from and :to")
-    int deleteRange(@Param("workspaceId") UUID workspaceId, @Param("platform") SourcePlatform platform, @Param("from") LocalDate from, @Param("to") LocalDate to);
+    @Query("""
+            delete from RevenueDaily r
+            where r.workspaceId = :workspaceId
+              and r.platform = :platform
+              and ((:storeId is null and r.storeId is null) or r.storeId = :storeId)
+              and r.revenueDate between :from and :to
+            """)
+    int deleteRange(
+            @Param("workspaceId") UUID workspaceId,
+            @Param("platform") SourcePlatform platform,
+            @Param("storeId") UUID storeId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to
+    );
 
     List<RevenueDaily> findByWorkspaceIdAndPlatformOrderByRevenueDateDesc(UUID workspaceId, SourcePlatform platform);
 }
