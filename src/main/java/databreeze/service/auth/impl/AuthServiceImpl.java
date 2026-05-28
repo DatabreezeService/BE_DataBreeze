@@ -4,6 +4,7 @@ import java.time.OffsetDateTime;
 import java.util.NoSuchElementException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +59,9 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     private WorkspaceBootstrapService workspaceBootstrapService;
 
+    @Value("${app.auth.require-email-verification:true}")
+    private boolean requireEmailVerification;
+
     @Override
     @Transactional
     public EmailOtpResponse register(RegisterRequest request) {
@@ -71,7 +75,7 @@ public class AuthServiceImpl implements AuthService {
                 .fullName(normalizeName(request.getFullName()))
                 .authProvider(AuthProvider.EMAIL_PASSWORD)
                 .emailVerified(false)
-            .userType(UserType.PERSONAL)
+                .userType(UserType.PERSONAL)
                 .systemRole(SystemRole.USER)
                 .status(UserStatus.PENDING_ONBOARDING)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
@@ -79,12 +83,22 @@ public class AuthServiceImpl implements AuthService {
         user = userRepository.save(user);
         workspaceBootstrapService.getOrCreatePersonalWorkspace(user);
 
-        sendOtpEmail(user);
+        if (requireEmailVerification) {
+            sendOtpEmail(user);
+        } else {
+            user.setEmailVerified(true);
+            user.setStatus(UserStatus.ACTIVE);
+            user.setEmailVerificationOtp(null);
+            user.setEmailVerificationOtpExpiresAt(null);
+            user = userRepository.save(user);
+        }
 
         return EmailOtpResponse.builder()
                 .email(user.getEmail())
                 .expiresAt(user.getEmailVerificationOtpExpiresAt())
-                .message("Da gui ma OTP xac thuc email. Vui long kiem tra hop thu.")
+                .message(requireEmailVerification
+                        ? "Da gui ma OTP xac thuc email. Vui long kiem tra hop thu."
+                        : "Da tao tai khoan. Xac thuc email dang tat tren moi truong hien tai.")
                 .build();
     }
 
@@ -106,7 +120,7 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalStateException("Tai khoan dang bi khoa hoac da bi xoa.");
         }
 
-        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+        if (requireEmailVerification && !Boolean.TRUE.equals(user.getEmailVerified())) {
             throw new IllegalStateException("Email chua duoc xac thuc. Vui long nhap OTP.");
         }
 
@@ -161,6 +175,10 @@ public class AuthServiceImpl implements AuthService {
 
         if (Boolean.TRUE.equals(user.getEmailVerified())) {
             throw new IllegalStateException("Tai khoan da duoc xac thuc.");
+        }
+
+        if (!requireEmailVerification) {
+            throw new IllegalStateException("Xac thuc email dang tat tren moi truong hien tai.");
         }
 
         if (user.getEmailVerificationOtpExpiresAt() == null || OffsetDateTime.now().isAfter(user.getEmailVerificationOtpExpiresAt())) {
