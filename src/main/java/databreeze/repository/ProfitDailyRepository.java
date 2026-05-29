@@ -12,8 +12,20 @@ import java.util.UUID;
 
 public interface ProfitDailyRepository extends JpaRepository<ProfitDaily, UUID> {
     @Modifying
-    @Query("delete from ProfitDaily p where p.workspaceId = :workspaceId and p.platform = :platform and p.profitDate between :from and :to")
-    int deleteRange(@Param("workspaceId") UUID workspaceId, @Param("platform") SourcePlatform platform, @Param("from") LocalDate from, @Param("to") LocalDate to);
+    @Query("""
+            delete from ProfitDaily p
+            where p.workspaceId = :workspaceId
+              and p.platform = :platform
+              and ((:storeId is null and p.storeId is null) or p.storeId = :storeId)
+              and p.profitDate between :from and :to
+            """)
+    int deleteRange(
+            @Param("workspaceId") UUID workspaceId,
+            @Param("platform") SourcePlatform platform,
+            @Param("storeId") UUID storeId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to
+    );
 
     List<ProfitDaily> findByWorkspaceIdAndPlatformOrderByProfitDateDesc(UUID workspaceId, SourcePlatform platform);
 

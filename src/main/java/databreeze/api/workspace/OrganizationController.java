@@ -1,4 +1,4 @@
-package databreeze.api;
+package databreeze.api.workspace;
 
 import databreeze.dto.workspace.CreateOrganizationWorkspaceRequest;
 import databreeze.dto.workspace.CreateOrganizationWorkspaceResponse;

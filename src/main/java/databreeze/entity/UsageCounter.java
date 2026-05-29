@@ -46,6 +46,18 @@ public class UsageCounter {
     @Builder.Default
     private Long insightGenerationCount = 0L;
 
+    @Column(name = "ai_input_tokens", nullable = false)
+    @Builder.Default
+    private Long aiInputTokens = 0L;
+
+    @Column(name = "ai_output_tokens", nullable = false)
+    @Builder.Default
+    private Long aiOutputTokens = 0L;
+
+    @Column(name = "ai_total_tokens", nullable = false)
+    @Builder.Default
+    private Long aiTotalTokens = 0L;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;

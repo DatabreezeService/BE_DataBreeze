@@ -21,6 +21,9 @@ public class SuggestMappingResponse {
     private List<String> unmappedColumns;
     private List<String> missingRequiredFields;
     private String source;
+    private long aiInputTokens;
+    private long aiOutputTokens;
+    private long aiTotalTokens;
     private String nextStep;
     private String message;
 }

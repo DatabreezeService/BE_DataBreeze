@@ -10,20 +10,25 @@ import databreeze.entity.Upload;
 import databreeze.enums.CommercePlatform;
 import databreeze.enums.OrderStatus;
 import databreeze.enums.ProductStatus;
+import databreeze.enums.RawRowStatus;
 import databreeze.repository.OrderItemRepository;
 import databreeze.repository.OrderRepository;
 import databreeze.repository.ProductRepository;
+import databreeze.repository.RawImportRowRepository;
 import databreeze.service.shopee.ShopeeOrderImportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
+import java.lang.reflect.Array;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -45,6 +50,9 @@ public class ShopeeOrderImportServiceImpl implements ShopeeOrderImportService {
     @Autowired
     private ProductRepository productRepository;
 
+    @Autowired
+    private RawImportRowRepository rawImportRowRepository;
+
     @Override
     public ShopeeImportResult importOrders(
             Upload upload,
@@ -65,6 +73,7 @@ public class ShopeeOrderImportServiceImpl implements ShopeeOrderImportService {
             try {
                 Map<String, Object> normalizedRow = normalizeRow(rawRow.getRawData(), sourceToTargetMap);
                 validateRequiredFields(normalizedRow);
+                List<String> warnings = validateWarnings(normalizedRow);
 
                 Order order = resolveOrder(upload, normalizedRow, orderCache, result);
                 Product product = resolveProduct(upload.getWorkspaceId(), normalizedRow, result);
@@ -74,15 +83,19 @@ public class ShopeeOrderImportServiceImpl implements ShopeeOrderImportService {
                 updateBusinessDateRange(order, result);
 
                 result.setSuccessRows(result.getSuccessRows() + 1);
+                markRowImported(rawRow, normalizedRow, warnings);
+                if (!warnings.isEmpty()) {
+                    result.setWarningRows(result.getWarningRows() + 1);
+                }
             } catch (Exception ex) {
                 result.setFailedRows(result.getFailedRows() + 1);
+                markRowInvalid(rawRow, ex);
                 if (!skipInvalidRows) {
                     throw ex;
                 }
             }
         }
 
-        result.setWarningRows(result.getFailedRows());
         return result;
     }
 
@@ -127,6 +140,42 @@ public class ShopeeOrderImportServiceImpl implements ShopeeOrderImportService {
         if (integerValue(row.get("quantity"), 1) <= 0) {
             throw new IllegalArgumentException("Invalid quantity.");
         }
+    }
+
+    private List<String> validateWarnings(Map<String, Object> row) {
+        List<String> warnings = new java.util.ArrayList<>();
+        BigDecimal netRevenue = decimalValue(row.get("net_revenue_amount"));
+        BigDecimal unitPrice = decimalValue(row.get("unit_price"));
+        int quantity = integerValue(row.get("quantity"), 1);
+        BigDecimal computedRevenue = unitPrice.multiply(BigDecimal.valueOf(quantity));
+        if (netRevenue.signum() == 0 && computedRevenue.signum() > 0) {
+            netRevenue = computedRevenue;
+        }
+        if (netRevenue.signum() > 0 && decimalValue(row.get("cogs_amount")).signum() == 0) {
+            warnings.add("Thiếu giá vốn/COGS nên lợi nhuận SKU có thể chưa chính xác.");
+        }
+        if (parseDateTime(row.get("order_date")) == null && parseDateTime(row.get("paid_at")) == null) {
+            warnings.add("Thiếu ngày đơn hàng/ngày thanh toán nên dashboard theo ngày có thể bỏ qua dòng này.");
+        }
+        return warnings;
+    }
+
+    private void markRowImported(RawImportRow rawRow, Map<String, Object> normalizedRow, List<String> warnings) {
+        rawRow.setNormalizedPreview(normalizedRow);
+        rawRow.setStatus(warnings.isEmpty() ? RawRowStatus.IMPORTED : RawRowStatus.WARNING);
+        rawRow.setErrorMessages(null);
+        rawRow.setWarningMessages(warnings.isEmpty() ? null : Map.of("messages", warnings));
+        rawImportRowRepository.save(rawRow);
+    }
+
+    private void markRowInvalid(RawImportRow rawRow, Exception ex) {
+        rawRow.setStatus(RawRowStatus.INVALID);
+        rawRow.setErrorMessages(Map.of(
+                "message", ex.getMessage() == null ? "Import row failed." : ex.getMessage(),
+                "exception", ex.getClass().getSimpleName(),
+                "rowNumber", rawRow.getRowNumber()
+        ));
+        rawImportRowRepository.save(rawRow);
     }
 
     private Order resolveOrder(
@@ -308,9 +357,36 @@ public class ShopeeOrderImportServiceImpl implements ShopeeOrderImportService {
     }
 
     private OffsetDateTime parseDateTime(Object value) {
+        if (value instanceof OffsetDateTime offsetDateTime) {
+            return offsetDateTime;
+        }
+        if (value instanceof LocalDateTime localDateTime) {
+            return localDateTime.atZone(VIETNAM_ZONE).toOffsetDateTime();
+        }
+        if (value instanceof LocalDate localDate) {
+            return localDate.atTime(12, 0).atZone(VIETNAM_ZONE).toOffsetDateTime();
+        }
+        if (value instanceof Date date) {
+            return date.toInstant().atZone(VIETNAM_ZONE).toOffsetDateTime();
+        }
+        if (value instanceof Number number) {
+            OffsetDateTime excelDate = parseExcelSerialDate(number);
+            if (excelDate != null) {
+                return excelDate;
+            }
+        }
+        OffsetDateTime arrayDate = parseArrayDate(value);
+        if (arrayDate != null) {
+            return arrayDate;
+        }
+
         String text = stringValue(value);
         if (isBlank(text)) {
             return null;
+        }
+        OffsetDateTime bracketArrayDate = parseBracketArrayDate(text);
+        if (bracketArrayDate != null) {
+            return bracketArrayDate;
         }
 
         List<DateTimeFormatter> dateTimeFormatters = List.of(
@@ -332,11 +408,106 @@ public class ShopeeOrderImportServiceImpl implements ShopeeOrderImportService {
         );
         for (DateTimeFormatter formatter : dateFormatters) {
             try {
-                return LocalDate.parse(text, formatter).atStartOfDay(VIETNAM_ZONE).toOffsetDateTime();
+                return LocalDate.parse(text, formatter).atTime(12, 0).atZone(VIETNAM_ZONE).toOffsetDateTime();
             } catch (Exception ignored) {
             }
         }
         return null;
+    }
+
+    private OffsetDateTime parseArrayDate(Object value) {
+        List<Integer> parts = new ArrayList<>();
+        if (value instanceof List<?> list) {
+            for (Object item : list) {
+                Integer parsed = integerPart(item);
+                if (parsed == null) {
+                    return null;
+                }
+                parts.add(parsed);
+            }
+        } else if (value != null && value.getClass().isArray()) {
+            int length = Array.getLength(value);
+            for (int i = 0; i < length; i++) {
+                Integer parsed = integerPart(Array.get(value, i));
+                if (parsed == null) {
+                    return null;
+                }
+                parts.add(parsed);
+            }
+        } else {
+            return null;
+        }
+        return parseDateParts(parts);
+    }
+
+    private OffsetDateTime parseBracketArrayDate(String text) {
+        String trimmed = text.trim();
+        if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) {
+            return null;
+        }
+        String body = trimmed.substring(1, trimmed.length() - 1);
+        if (body.isBlank()) {
+            return null;
+        }
+        List<Integer> parts = new ArrayList<>();
+        for (String token : body.split(",")) {
+            Integer parsed = integerPart(token.trim());
+            if (parsed == null) {
+                return null;
+            }
+            parts.add(parsed);
+        }
+        return parseDateParts(parts);
+    }
+
+    private OffsetDateTime parseDateParts(List<Integer> parts) {
+        if (parts == null || parts.size() < 3) {
+            return null;
+        }
+        try {
+            int year = parts.get(0);
+            int month = parts.get(1);
+            int day = parts.get(2);
+            int hour = parts.size() > 3 ? parts.get(3) : 12;
+            int minute = parts.size() > 4 ? parts.get(4) : 0;
+            int second = parts.size() > 5 ? parts.get(5) : 0;
+            return LocalDateTime.of(year, month, day, hour, minute, second)
+                    .atZone(VIETNAM_ZONE)
+                    .toOffsetDateTime();
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private OffsetDateTime parseExcelSerialDate(Number number) {
+        double serial = number.doubleValue();
+        if (serial < 20000 || serial > 80000) {
+            return null;
+        }
+        long wholeDays = (long) Math.floor(serial);
+        double fraction = serial - wholeDays;
+        LocalDate date = LocalDate.of(1899, 12, 30).plusDays(wholeDays);
+        int seconds = (int) Math.round(fraction * 24 * 60 * 60);
+        if (seconds == 0) {
+            seconds = 12 * 60 * 60;
+        }
+        return date.atStartOfDay(VIETNAM_ZONE)
+                .plusSeconds(seconds)
+                .toOffsetDateTime();
+    }
+
+    private Integer integerPart(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return Integer.parseInt(String.valueOf(value).trim());
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     private Integer integerValue(Object value, int fallback) {

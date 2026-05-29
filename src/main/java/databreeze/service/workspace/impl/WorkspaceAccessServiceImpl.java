@@ -134,7 +134,10 @@ public class WorkspaceAccessServiceImpl implements WorkspaceAccessService {
                     WorkspacePermission.READ_WORKSPACE,
                     WorkspacePermission.IMPORT_DATA,
                     WorkspacePermission.MANAGE_STORES,
-                    WorkspacePermission.MANAGE_FINANCIAL_DATA
+                    WorkspacePermission.MANAGE_FINANCIAL_DATA,
+                    WorkspacePermission.READ_FINANCIAL_DATA,
+                    WorkspacePermission.MANAGE_INSIGHTS,
+                    WorkspacePermission.MANAGE_BILLING
             );
         }
 

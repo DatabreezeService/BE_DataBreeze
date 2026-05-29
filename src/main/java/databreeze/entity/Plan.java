@@ -58,6 +58,16 @@ public class Plan {
     @Column(name = "max_file_size_mb")
     private Integer maxFileSizeMb;
 
+    @Column(name = "ai_token_limit_per_month")
+    private Long aiTokenLimitPerMonth;
+
+    @Column(name = "insight_generation_limit_per_month")
+    private Integer insightGenerationLimitPerMonth;
+
+    @Column(name = "recommended_ai_model", nullable = false, length = 100)
+    @Builder.Default
+    private String recommendedAiModel = "gpt-4.1-mini";
+
     @Column(name = "allow_ai_mapping", nullable = false)
     @Builder.Default
     private Boolean allowAiMapping = true;

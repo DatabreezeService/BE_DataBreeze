@@ -26,7 +26,7 @@ public interface MappingSuggestionService {
      * @param useAi        true nếu muốn gọi AI bổ sung mapping.
      * @return Danh sách mapping gợi ý để FE hiển thị cho user xác nhận.
      */
-    List<ColumnMappingDto> suggest(
+    MappingSuggestionResult suggest(
             ParsedFile file,
             List<TargetSchemaField> targetFields,
             boolean useAi

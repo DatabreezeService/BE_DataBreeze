@@ -8,6 +8,8 @@ import databreeze.entity.TargetSchemaField;
 import databreeze.enums.MappingSource;
 import databreeze.enums.TargetDataType;
 import databreeze.service.ai.AiMappingClient;
+import databreeze.service.ai.AiMappingResult;
+import databreeze.service.ai.AiTokenUsage;
 import databreeze.service.etl.ParsedFile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,8 +46,8 @@ public class OpenAiMappingClient implements AiMappingClient {
     private String model;
 
     @Override
-    public List<ColumnMappingDto> suggestMappings(ParsedFile file, List<TargetSchemaField> targetFields) {
-        if (!enabled || apiKey == null || apiKey.isBlank()) return List.of();
+    public AiMappingResult suggestMappings(ParsedFile file, List<TargetSchemaField> targetFields) {
+        if (!enabled || apiKey == null || apiKey.isBlank()) return AiMappingResult.empty();
         try {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("model", model);
@@ -64,16 +66,17 @@ public class OpenAiMappingClient implements AiMappingClient {
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() < 200 || response.statusCode() >= 300) return List.of();
+            if (response.statusCode() < 200 || response.statusCode() >= 300) return AiMappingResult.empty();
 
             JsonNode root = mapper.readTree(response.body());
+            AiTokenUsage tokenUsage = extractTokenUsage(root);
             String content = root.path("choices").path(0).path("message").path("content").asText();
             JsonNode contentNode = mapper.readTree(content);
             List<AiMap> aiMaps = mapper.convertValue(contentNode.path("mappings"), new TypeReference<List<AiMap>>() {});
             Map<String, TargetSchemaField> fieldMap = new HashMap<>();
             for (TargetSchemaField field : targetFields) fieldMap.put(field.getFieldName(), field);
 
-            return aiMaps.stream()
+            List<ColumnMappingDto> mappings = aiMaps.stream()
                     .filter(item -> item.sourceColumnName != null && item.targetFieldName != null && fieldMap.containsKey(item.targetFieldName))
                     .map(item -> {
                         TargetSchemaField field = fieldMap.get(item.targetFieldName);
@@ -91,9 +94,27 @@ public class OpenAiMappingClient implements AiMappingClient {
                         );
                     })
                     .toList();
+
+            return AiMappingResult.builder()
+                    .mappings(mappings)
+                    .tokenUsage(tokenUsage)
+                    .aiCalled(true)
+                    .build();
         } catch (Exception ignored) {
-            return List.of();
+            return AiMappingResult.empty();
         }
+    }
+
+    private AiTokenUsage extractTokenUsage(JsonNode root) {
+        JsonNode usage = root.path("usage");
+        long inputTokens = usage.path("prompt_tokens").asLong(0L);
+        long outputTokens = usage.path("completion_tokens").asLong(0L);
+        long totalTokens = usage.path("total_tokens").asLong(inputTokens + outputTokens);
+        return AiTokenUsage.builder()
+                .inputTokens(inputTokens)
+                .outputTokens(outputTokens)
+                .totalTokens(totalTokens)
+                .build();
     }
 
     private String systemPrompt() {

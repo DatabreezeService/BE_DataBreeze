@@ -6,8 +6,10 @@ import databreeze.entity.TargetSchemaField;
 import databreeze.enums.MappingSource;
 import databreeze.repository.ImportColumnMappingRepository;
 import databreeze.service.ai.AiMappingClient;
+import databreeze.service.ai.AiMappingResult;
 import databreeze.service.etl.MappingRuleBook;
 import databreeze.service.etl.MappingSuggestionService;
+import databreeze.service.etl.MappingSuggestionResult;
 import databreeze.service.etl.ParsedFile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -48,34 +50,40 @@ public class MappingSuggestionServiceImpl implements MappingSuggestionService {
      * 4. Sort theo displayOrder của target schema để FE hiển thị dễ nhìn.
      */
     @Override
-    public List<ColumnMappingDto> suggest(
+    public MappingSuggestionResult suggest(
             ParsedFile file,
             List<TargetSchemaField> targetFields,
             boolean useAi
     ) {
         if (file == null || file.getHeaders() == null || file.getHeaders().isEmpty()) {
-            return List.of();
+            return MappingSuggestionResult.builder().build();
         }
 
         if (targetFields == null || targetFields.isEmpty()) {
-            return List.of();
+            return MappingSuggestionResult.builder().build();
         }
 
         List<ColumnMappingDto> ruleMappings = buildRuleMappings(file, targetFields);
 
         if (!useAi) {
-            return sortByTargetSchemaOrder(ruleMappings, targetFields);
+            return MappingSuggestionResult.builder()
+                    .mappings(sortByTargetSchemaOrder(ruleMappings, targetFields))
+                    .build();
         }
 
-        List<ColumnMappingDto> aiMappings = aiMappingClient.suggestMappings(file, targetFields);
+        AiMappingResult aiResult = aiMappingClient.suggestMappings(file, targetFields);
 
         List<ColumnMappingDto> mergedMappings = mergeMappings(
                 ruleMappings,
-                aiMappings,
+                aiResult.getMappings(),
                 targetFields
         );
 
-        return sortByTargetSchemaOrder(mergedMappings, targetFields);
+        return MappingSuggestionResult.builder()
+                .mappings(sortByTargetSchemaOrder(mergedMappings, targetFields))
+                .tokenUsage(aiResult.getTokenUsage())
+                .aiCalled(aiResult.isAiCalled())
+                .build();
     }
 
     /**

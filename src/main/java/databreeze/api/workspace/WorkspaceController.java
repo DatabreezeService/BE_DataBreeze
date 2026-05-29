@@ -1,4 +1,4 @@
-package databreeze.api;
+package databreeze.api.workspace;
 
 import databreeze.dto.workspace.AcceptInvitationRequest;
 import databreeze.dto.workspace.AcceptInvitationResponse;

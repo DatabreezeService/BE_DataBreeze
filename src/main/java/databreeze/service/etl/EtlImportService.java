@@ -6,6 +6,8 @@ import databreeze.enums.SourcePlatform;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -51,4 +53,12 @@ public interface EtlImportService {
      * Bước 5: lấy trạng thái job cho FE polling.
      */
     ImportJobStatusResponse getStatus(UUID workspaceId, UUID actorUserId, UUID importJobId);
+
+    List<UploadListItemResponse> listUploads(UUID workspaceId, UUID actorUserId, UUID storeId, int limit);
+
+    UploadListItemResponse getUpload(UUID workspaceId, UUID actorUserId, UUID uploadId);
+
+    List<ImportJobListItemResponse> listJobs(UUID workspaceId, UUID actorUserId, UUID uploadId, int limit);
+
+    Path getErrorReport(UUID workspaceId, UUID actorUserId, UUID importJobId);
 }

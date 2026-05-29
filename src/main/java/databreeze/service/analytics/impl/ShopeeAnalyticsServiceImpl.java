@@ -1,11 +1,13 @@
 package databreeze.service.analytics.impl;
 
 import databreeze.dto.shopee.ShopeeDailyCalculationResult;
+import databreeze.entity.OperatingExpense;
 import databreeze.entity.Order;
 import databreeze.entity.OrderItem;
 import databreeze.entity.ProfitDaily;
 import databreeze.entity.RevenueDaily;
 import databreeze.enums.SourcePlatform;
+import databreeze.repository.OperatingExpenseRepository;
 import databreeze.repository.OrderItemRepository;
 import databreeze.repository.OrderRepository;
 import databreeze.repository.ProfitDailyRepository;
@@ -40,6 +42,9 @@ public class ShopeeAnalyticsServiceImpl implements ShopeeAnalyticsService {
     @Autowired
     private ProfitDailyRepository profitDailyRepository;
 
+    @Autowired
+    private OperatingExpenseRepository operatingExpenseRepository;
+
     @Override
     @Transactional
     public ShopeeDailyCalculationResult recalculateDaily(UUID workspaceId, UUID storeId, LocalDate fromDate, LocalDate toDate) {
@@ -47,8 +52,8 @@ public class ShopeeAnalyticsServiceImpl implements ShopeeAnalyticsService {
             return new ShopeeDailyCalculationResult(workspaceId, storeId, fromDate, toDate, 0, 0, "Không có ngày phát sinh để tính dashboard.");
         }
 
-        revenueDailyRepository.deleteRange(workspaceId, SourcePlatform.SHOPEE, fromDate, toDate);
-        profitDailyRepository.deleteRange(workspaceId, SourcePlatform.SHOPEE, fromDate, toDate);
+        revenueDailyRepository.deleteRange(workspaceId, SourcePlatform.SHOPEE, storeId, fromDate, toDate);
+        profitDailyRepository.deleteRange(workspaceId, SourcePlatform.SHOPEE, storeId, fromDate, toDate);
 
         Map<LocalDate, DailyAgg> daily = new TreeMap<>();
         List<Order> workspaceOrders = orderRepository.findAll().stream()
@@ -82,6 +87,14 @@ public class ShopeeAnalyticsServiceImpl implements ShopeeAnalyticsService {
             agg.adSpend = agg.adSpend.add(money(item.getAllocatedAdSpendAmount()));
         }
 
+        for (OperatingExpense expense : operatingExpenseRepository.findByWorkspaceIdAndExpenseDateBetweenOrderByExpenseDateDescCreatedAtDesc(workspaceId, fromDate, toDate)) {
+            if (storeId != null && expense.getStoreId() != null && !storeId.equals(expense.getStoreId())) {
+                continue;
+            }
+            DailyAgg agg = daily.computeIfAbsent(expense.getExpenseDate(), d -> new DailyAgg());
+            agg.operatingExpense = agg.operatingExpense.add(money(expense.getAmount()));
+        }
+
         OffsetDateTime now = OffsetDateTime.now();
         int revenueRows = 0;
         int profitRows = 0;
@@ -103,7 +116,7 @@ public class ShopeeAnalyticsServiceImpl implements ShopeeAnalyticsService {
             revenueRows++;
 
             BigDecimal grossProfit = agg.net.subtract(agg.cogs);
-            BigDecimal netProfit = grossProfit.subtract(agg.platformFee).subtract(agg.transactionFee).subtract(agg.shippingFee).subtract(agg.adSpend);
+            BigDecimal netProfit = grossProfit.subtract(agg.platformFee).subtract(agg.transactionFee).subtract(agg.shippingFee).subtract(agg.adSpend).subtract(agg.operatingExpense);
             BigDecimal margin = agg.net.signum() == 0 ? BigDecimal.ZERO : netProfit.divide(agg.net, 4, RoundingMode.HALF_UP);
             profitDailyRepository.save(ProfitDaily.builder()
                     .workspaceId(workspaceId)
@@ -117,7 +130,7 @@ public class ShopeeAnalyticsServiceImpl implements ShopeeAnalyticsService {
                     .transactionFeeAmount(agg.transactionFee)
                     .shippingFeeAmount(agg.shippingFee)
                     .adSpendAmount(agg.adSpend)
-                    .operatingExpenseAmount(BigDecimal.ZERO)
+                    .operatingExpenseAmount(agg.operatingExpense)
                     .refundAmount(agg.refund)
                     .grossProfitAmount(grossProfit)
                     .netProfitAmount(netProfit)
@@ -154,5 +167,6 @@ public class ShopeeAnalyticsServiceImpl implements ShopeeAnalyticsService {
         BigDecimal shippingFee = BigDecimal.ZERO;
         BigDecimal cogs = BigDecimal.ZERO;
         BigDecimal adSpend = BigDecimal.ZERO;
+        BigDecimal operatingExpense = BigDecimal.ZERO;
     }
 }
