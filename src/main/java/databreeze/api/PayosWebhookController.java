@@ -13,12 +13,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/webhooks")
-@Tag(name = "PaymentsOS Webhook", description = "Nhan callback tu PaymentsOS")
-public class PaymentsOsWebhookController {
+@Tag(name = "payOS Webhook", description = "Receive callbacks from payOS")
+public class PayosWebhookController {
 
-    @PostMapping("/paymentsos")
-    @Operation(summary = "Nhan webhook PaymentsOS")
-    public ApiResponse<Map<String, Object>> handlePaymentsOs(@RequestBody Map<String, Object> payload) {
-        return ApiResponse.ok("Nhan webhook thanh cong.", payload);
+    @PostMapping("/payos")
+    @Operation(summary = "Receive payOS webhook")
+    public ApiResponse<Map<String, Object>> handlePayos(@RequestBody Map<String, Object> payload) {
+        return ApiResponse.ok("Received payOS webhook.", payload);
     }
 }

@@ -10,57 +10,55 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import databreeze.dto.common.ApiResponse;
-import databreeze.dto.payments.PaymentsOsCreatePaymentRequest;
-import databreeze.dto.payments.PaymentsOsGenericRequest;
-import databreeze.service.payments.PaymentsOsService;
+import databreeze.dto.payments.PayosCreatePaymentRequest;
+import databreeze.dto.payments.PayosGenericRequest;
+import databreeze.service.payments.PayosService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
-@RequestMapping("/api/v1/paymentsos")
-@Tag(name = "PaymentsOS", description = "Cac endpoint mau goi PaymentsOS")
-public class PaymentsOsController {
+@RequestMapping("/api/v1/payos")
+@Tag(name = "payOS", description = "Endpoints for payOS integration")
+public class PayosController {
 
     @Autowired
-    private PaymentsOsService paymentsOsService;
+    private PayosService payosService;
 
     @PostMapping("/payments")
-    @Operation(summary = "Tao payment (PaymentsOS)")
+    @Operation(summary = "Tạo payment (payOS)")
     public ApiResponse<String> createPayment(
             @RequestHeader(value = "idempotency-key", required = false) String idempotencyKey,
-            @RequestBody PaymentsOsCreatePaymentRequest payload) {
-        return ApiResponse.ok("Tao payment thanh cong.", paymentsOsService.createPayment(payload, idempotencyKey));
+            @RequestBody PayosCreatePaymentRequest payload) {
+        return ApiResponse.ok("Tạo payment thành công.", payosService.createPayment(payload, idempotencyKey));
     }
 
     @GetMapping("/payments/{paymentId}")
-    @Operation(summary = "Lay trang thai payment (PaymentsOS)")
+    @Operation(summary = "Lấy trạng thái payment (payOS)")
     public ApiResponse<String> getPayment(@PathVariable String paymentId) {
-        return ApiResponse.ok("Lay payment thanh cong.", paymentsOsService.getPayment(paymentId));
+        return ApiResponse.ok("Lấy payment thành công.", payosService.getPayment(paymentId));
     }
 
     @PostMapping("/payments/{paymentId}/captures")
-    @Operation(summary = "Capture payment (PaymentsOS)")
+    @Operation(summary = "Capture payment (payOS)")
     public ApiResponse<String> capturePayment(
             @PathVariable String paymentId,
             @RequestHeader(value = "idempotency-key", required = false) String idempotencyKey,
-            @RequestBody PaymentsOsGenericRequest payload) {
-        return ApiResponse.ok("Capture payment thanh cong.",
-                paymentsOsService.capturePayment(paymentId, payload, idempotencyKey));
+            @RequestBody PayosGenericRequest payload) {
+        return ApiResponse.ok("Capture payment thành công.", payosService.capturePayment(paymentId, payload, idempotencyKey));
     }
 
     @PostMapping("/payments/{paymentId}/refunds")
-    @Operation(summary = "Refund payment (PaymentsOS)")
+    @Operation(summary = "Refund payment (payOS)")
     public ApiResponse<String> refundPayment(
             @PathVariable String paymentId,
             @RequestHeader(value = "idempotency-key", required = false) String idempotencyKey,
-            @RequestBody PaymentsOsGenericRequest payload) {
-        return ApiResponse.ok("Refund payment thanh cong.",
-                paymentsOsService.refundPayment(paymentId, payload, idempotencyKey));
+            @RequestBody PayosGenericRequest payload) {
+        return ApiResponse.ok("Refund payment thành công.", payosService.refundPayment(paymentId, payload, idempotencyKey));
     }
 
     @GetMapping("/payments/{paymentId}/transactions")
-    @Operation(summary = "Lay transactions (PaymentsOS)")
+    @Operation(summary = "Lấy transactions (payOS)")
     public ApiResponse<String> getTransactions(@PathVariable String paymentId) {
-        return ApiResponse.ok("Lay transactions thanh cong.", paymentsOsService.getTransactions(paymentId));
+        return ApiResponse.ok("Lấy transactions thành công.", payosService.getTransactions(paymentId));
     }
 }

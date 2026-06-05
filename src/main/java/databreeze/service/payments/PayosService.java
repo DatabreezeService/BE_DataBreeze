@@ -10,14 +10,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import databreeze.config.PaymentsOsProperties;
+import databreeze.config.PayosProperties;
 
 @Service
-public class PaymentsOsService {
+public class PayosService {
     private final RestTemplate restTemplate;
-    private final PaymentsOsProperties properties;
+    private final PayosProperties properties;
 
-    public PaymentsOsService(RestTemplate restTemplate, PaymentsOsProperties properties) {
+    public PayosService(RestTemplate restTemplate, PayosProperties properties) {
         this.restTemplate = restTemplate;
         this.properties = properties;
     }
@@ -56,9 +56,15 @@ public class PaymentsOsService {
     private HttpHeaders baseHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("app-id", properties.getAppId());
-        headers.set("private-key", properties.getPrivateKey());
-        headers.set("api-version", properties.getApiVersion());
+        if (properties.getApiKey() != null) {
+            headers.set("api-key", properties.getApiKey());
+        }
+        if (properties.getMerchantId() != null) {
+            headers.set("merchant-id", properties.getMerchantId());
+        }
+        if (properties.getApiVersion() != null) {
+            headers.set("api-version", properties.getApiVersion());
+        }
         return headers;
     }
 
@@ -70,7 +76,7 @@ public class PaymentsOsService {
             ResponseEntity<String> response = restTemplate.exchange(endpointUrl, HttpMethod.GET, requestEntity, String.class);
             return response.getBody();
         } catch (Exception e) {
-            throw new RuntimeException("Loi ket noi den PaymentsOS: " + e.getMessage(), e);
+            throw new RuntimeException("Lỗi kết nối đến payOS: " + e.getMessage(), e);
         }
     }
 
@@ -82,7 +88,7 @@ public class PaymentsOsService {
         try {
             return restTemplate.postForObject(endpointUrl, requestEntity, String.class);
         } catch (Exception e) {
-            throw new RuntimeException("Loi ket noi den PaymentsOS: " + e.getMessage(), e);
+            throw new RuntimeException("Lỗi kết nối đến payOS: " + e.getMessage(), e);
         }
     }
 

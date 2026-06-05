@@ -4,11 +4,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@ConfigurationProperties(prefix = "paymentsos")
-public class PaymentsOsProperties {
+@ConfigurationProperties(prefix = "payos")
+public class PayosProperties {
     private String baseUrl;
-    private String appId;
-    private String privateKey;
+    private String apiKey;
+    private String merchantId;
     private String apiVersion;
 
     public String getBaseUrl() {
@@ -19,20 +19,20 @@ public class PaymentsOsProperties {
         this.baseUrl = baseUrl;
     }
 
-    public String getAppId() {
-        return appId;
+    public String getApiKey() {
+        return apiKey;
     }
 
-    public void setAppId(String appId) {
-        this.appId = appId;
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
     }
 
-    public String getPrivateKey() {
-        return privateKey;
+    public String getMerchantId() {
+        return merchantId;
     }
 
-    public void setPrivateKey(String privateKey) {
-        this.privateKey = privateKey;
+    public void setMerchantId(String merchantId) {
+        this.merchantId = merchantId;
     }
 
     public String getApiVersion() {

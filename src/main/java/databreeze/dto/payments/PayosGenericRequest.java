@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonAnySetter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class PaymentsOsCreatePaymentRequest {
+public class PayosGenericRequest {
     private final Map<String, Object> fields = new LinkedHashMap<>();
 
     @JsonAnySetter
