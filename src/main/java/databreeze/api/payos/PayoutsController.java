@@ -4,15 +4,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import databreeze.dto.common.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import vn.payos.PayOS;
 import vn.payos.model.v1.payouts.GetPayoutListParams;
 import vn.payos.model.v1.payouts.GetPayoutListParams.GetPayoutListParamsBuilder;
@@ -25,6 +27,8 @@ import vn.payos.model.v1.payoutsAccount.PayoutAccountInfo;
 
 @RestController
 @RequestMapping("/api/v1/payos/payouts")
+@ConditionalOnProperty(prefix = "app.payos", name = "enabled", havingValue = "true", matchIfMissing = true)
+@SecurityRequirement(name = "bearer")
 public class PayoutsController {
   private final PayOS payOS;
 

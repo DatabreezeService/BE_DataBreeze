@@ -1,5 +1,7 @@
 package databreeze.dto.payments;
 
+import java.util.UUID;
+
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -14,6 +16,8 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CreatePaymentLinkRequestBody {
+    private UUID workspaceId;
+
     private Long orderCode;
 
     @NotBlank(message = "productName khong duoc de trong")

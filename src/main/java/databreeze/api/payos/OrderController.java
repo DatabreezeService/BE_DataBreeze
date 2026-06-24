@@ -2,11 +2,12 @@ package databreeze.api.payos;
 
 import java.util.Map;
 
-import jakarta.validation.Valid;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import databreeze.dto.common.ApiResponse;
 import databreeze.dto.payments.CreatePaymentLinkRequestBody;
+import databreeze.security.CurrentUser;
+import databreeze.security.UserPrincipal;
+import databreeze.service.payments.PaymentTransactionService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 import vn.payos.PayOS;
 import vn.payos.core.FileDownloadResponse;
 import vn.payos.exception.APIException;
@@ -29,16 +35,21 @@ import vn.payos.model.webhooks.ConfirmWebhookResponse;
 
 @RestController
 @RequestMapping("/api/v1/payos/order")
+@ConditionalOnProperty(prefix = "app.payos", name = "enabled", havingValue = "true", matchIfMissing = true)
+@SecurityRequirement(name = "bearer")
 public class OrderController {
   private final PayOS payOS;
+  private final PaymentTransactionService paymentTransactionService;
 
-  public OrderController(PayOS payOS) {
+  public OrderController(PayOS payOS, PaymentTransactionService paymentTransactionService) {
     super();
     this.payOS = payOS;
+    this.paymentTransactionService = paymentTransactionService;
   }
 
   @PostMapping(path = "/create")
   public ApiResponse<CreatePaymentLinkResponse> createPaymentLink(
+      @AuthenticationPrincipal UserPrincipal principal,
       @Valid @RequestBody CreatePaymentLinkRequestBody requestBody) throws Exception {
     long orderCode =
         requestBody.getOrderCode() == null ? System.currentTimeMillis() / 1000 : requestBody.getOrderCode();
@@ -59,6 +70,8 @@ public class OrderController {
             .build();
 
     CreatePaymentLinkResponse data = payOS.paymentRequests().create(paymentData);
+    paymentTransactionService.recordCreatedPayment(
+        CurrentUser.requireUserId(principal), requestBody, orderCode, data);
     return ApiResponse.success(data);
   }
 
