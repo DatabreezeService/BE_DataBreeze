@@ -24,4 +24,16 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> fail(String message, T data) {
         return new ApiResponse<>(false, message, data, OffsetDateTime.now());
     }
+
+    public static <T> ApiResponse<T> success(T data) {
+        return new ApiResponse<>(true, "success", data, OffsetDateTime.now());
+    }
+
+    public static <T> ApiResponse<T> success(String message, T data) {
+        return new ApiResponse<>(true, message, data, OffsetDateTime.now());
+    }
+
+    public static <T> ApiResponse<T> error(String message) {
+        return new ApiResponse<>(false, message, null, OffsetDateTime.now());
+    }
 }

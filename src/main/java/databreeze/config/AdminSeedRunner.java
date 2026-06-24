@@ -27,7 +27,7 @@ public class AdminSeedRunner implements CommandLineRunner {
     @Value("${app.admin.seed.enabled:false}")
     private boolean seedEnabled;
 
-    @Value("${app.admin.seed.email:admin@databreeze.local}")
+    @Value("${app.admin.seed.email:databreeze.team@gmail.com}")
     private String seedEmail;
 
     @Value("${app.admin.seed.password:Admin@123456}")
