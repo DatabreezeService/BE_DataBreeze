@@ -217,35 +217,6 @@ Early rule-based insights:
 
 Future AI insights should explain business context but must not hide calculation logic.
 
-## UX Principles
-
-### Vietnamese-First
-
-Use familiar business language. Prefer terms like shop, doanh thu, chi phi, loi nhuan, gia von, don hang, SKU, phi san, hoan tien.
-
-### Guided, Not Technical
-
-The user should feel they are following a clear path:
-
-```text
-Upload -> Map columns -> Check data -> Update dashboard
-```
-
-Avoid exposing internal ETL terms in primary UI unless needed for debugging.
-
-### Errors Should Be Actionable
-
-Bad data should produce practical next steps:
-
-- Add missing SKU cost.
-- Fix invalid date.
-- Confirm required mapping.
-- Download error file.
-
-### Solo-First, Team-Ready
-
-The MVP should feel comfortable for a solo seller. The information architecture should still support teams later through workspace switching, member roles, and organization billing.
-
 ## Pricing and Limits
 
 The backend currently seeds these plan concepts:

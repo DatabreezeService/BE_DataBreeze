@@ -2,6 +2,8 @@
 
 This guide is for agents working inside `BE_DataBreeze`. Read it before changing backend code, API behavior, ETL logic, billing logic, or persistence.
 
+Before making product or architecture decisions, also read `docs/PRODUCT_MEMORY_AND_LONG_TERM_STACK.md`. That file preserves the long-term product memory, stack decision, user model, module priority, and build sequence for DataBreeze.
+
 ## Backend Purpose
 
 `BE_DataBreeze` is the active backend for DataBreeze. It is a Spring Boot API that currently focuses on Shopee Vietnam import workflows and business analytics. The backend owns authentication, workspace access, file ingestion, mapping, import jobs, processed commerce data, dashboards, costs, expenses, subscriptions, admin operations, and early payment integration.
