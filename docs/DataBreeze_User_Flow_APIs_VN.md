@@ -1,6 +1,6 @@
 # DataBreeze BE - User Flow APIs
 
-File nay note cac API user-flow moi bo sung de FE co the dung app end-to-end sau khi import Shopee.
+File nay note cac API user-flow moi bo sung sau khi import Shopee.
 
 ## ETL history
 
@@ -81,15 +81,3 @@ Body tao chi phi:
   "allocationMethod": "MANUAL"
 }
 ```
-
-## FE flow goi y
-
-1. Tao/list store: `GET/POST /stores`.
-2. Upload Shopee voi `storeId`.
-3. Suggest mapping, confirm mapping, run import.
-4. Lay `dashboardUrl`, `minBusinessDate`, `maxBusinessDate` tu response run import.
-5. Goi dashboard Shopee de hien KPI/chart/top products.
-6. Goi missing-skus de nhap gia von SKU con thieu.
-7. Tao product-costs, sau do goi apply COGS.
-8. Goi generate insights voi cung `storeId/fromDate/toDate`.
-9. Goi list insights co filter `storeId/fromDate/toDate` de tranh hien insight cu.

@@ -4,9 +4,9 @@ Bản này giữ đúng cấu trúc project hiện tại:
 
 ```txt
 src/main/java/databreeze
-├── api              # Controller/API layer nhận request từ React/Swagger
+├── api              # Controller/API layer nhận request từ client/Swagger
 ├── config           # Env, Swagger/OpenAPI, CORS/JWT sau này
-├── dto              # Request/Response DTO, không dùng Entity để trả ra FE
+├── dto              # Request/Response DTO, không dùng Entity để trả ra client
 ├── entity           # JPA Entity map trực tiếp bảng DB
 ├── enums            # Enum dùng chung
 ├── repository       # Lớp giao tiếp DB, extends JpaRepository
@@ -19,7 +19,7 @@ src/main/java/databreeze
 Không transfer dữ liệu thuần qua Entity.
 
 ```txt
-React/Swagger request
+Client/Swagger request
     → DTO Request
     → Controller
     → Service interface
@@ -27,7 +27,7 @@ React/Swagger request
     → Repository
     → Entity/DB
     → DTO Response
-    → React
+    → client
 ```
 
 Entity chỉ dùng ở tầng service/repository để map DB. Controller chỉ nhận/trả DTO.
@@ -92,7 +92,7 @@ service/ai
 ### EtlImportService
 
 #### uploadAndAnalyze(...)
-- Nhận file Excel/CSV từ FE.
+- Nhận file Excel/CSV từ client.
 - Chỉ cho phép `SHOPEE + MARKETPLACE_ORDER` trong MVP.
 - Gọi `TargetSchemaService.getActiveSchema()` để lấy schema Shopee VN.
 - Gọi `FileParsingService.parse()` để đọc header + rows.
@@ -100,7 +100,7 @@ service/ai
 - Lưu metadata vào `uploads`.
 - Tạo `import_jobs`.
 - Gọi `RawRowService.saveRawRows()` để lưu dữ liệu gốc vào `raw_import_rows`.
-- Trả `UploadFileResponse` cho FE gồm `uploadId`, `importJobId`, `headers`, `sampleRows`.
+- Trả `UploadFileResponse` cho client gồm `uploadId`, `importJobId`, `headers`, `sampleRows`.
 
 #### suggestMapping(importJobId, request)
 - Load lại file đã upload từ `raw_import_rows`.
@@ -109,13 +109,13 @@ service/ai
 - Rule Shopee VN chạy trước.
 - AI chỉ được gọi nếu `request.useAi=true` và `APP_AI_ENABLED=true`.
 - Lưu mapping vào `import_column_mappings` với `userConfirmed=false`.
-- Trả `SuggestMappingResponse` để FE hiển thị Schema Change Report.
+- Trả `SuggestMappingResponse` để client xử lý mapping.
 
 #### confirmMapping(importJobId, request)
-- FE gửi mapping user đã xác nhận/chỉnh sửa.
+- Client gửi mapping user đã xác nhận/chỉnh sửa.
 - Service kiểm tra field bắt buộc như `external_order_id`, `sku`.
 - Lưu mapping với `userConfirmed=true`.
-- Nếu thiếu field bắt buộc thì trả `missingRequiredFields` để FE chặn import.
+- Nếu thiếu field bắt buộc thì trả `missingRequiredFields`.
 
 #### runImport(importJobId, request)
 - Kiểm tra mapping đã confirmed.
@@ -125,7 +125,7 @@ service/ai
 - Cập nhật `import_jobs` thành `COMPLETED` hoặc `FAILED`.
 
 #### getStatus(importJobId)
-- Trả trạng thái job cho FE polling.
+- Trả trạng thái job cho client polling.
 
 ### FileParsingService
 
@@ -156,7 +156,7 @@ service/ai
 #### persistMappings(...)
 - Xóa mapping cũ của job.
 - Lưu mapping mới vào `import_column_mappings`.
-- Cho phép FE chỉnh mapping nhiều lần trước khi import.
+- Cho phép client gửi lại mapping nhiều lần trước khi import.
 
 ### ShopeeOrderImportService
 
@@ -234,7 +234,7 @@ Flow đúng:
 ```txt
 Rule Shopee VN
     → AI bổ sung cột khó nếu bật
-    → FE hiển thị mapping
+    → client xử lý mapping
     → User xác nhận
     → BE mới import
 ```

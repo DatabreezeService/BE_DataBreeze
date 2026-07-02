@@ -59,7 +59,7 @@ The project contains both `dto/shopee` and `dto/shoppee`. The correctly spelled 
 ## High-Level Data Flow
 
 ```text
-Frontend / Swagger request
+Client / Swagger request
   -> DTO request
   -> Controller
   -> Service interface
@@ -67,7 +67,7 @@ Frontend / Swagger request
   -> Repository
   -> Entity / PostgreSQL
   -> DTO response
-  -> Frontend
+  -> Client
 ```
 
 Controllers should not expose JPA entities directly.
@@ -395,7 +395,7 @@ When adding billing limits:
 1. Store durable counters in PostgreSQL.
 2. Use Redis only for short-lived throttles or locks.
 3. Make limit errors user-readable.
-4. Keep plan catalog and UI plan display in sync.
+4. Keep plan catalog and client-facing plan responses in sync.
 
 When changing auth:
 

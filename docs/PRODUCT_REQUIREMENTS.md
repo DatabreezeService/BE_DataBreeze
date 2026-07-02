@@ -4,7 +4,7 @@ This document preserves the product meaning behind DataBreeze so backend agents 
 
 ## Product Vision
 
-DataBreeze is an AI-assisted Vietnamese-first data pipeline and business insight workspace. It helps SMEs, online sellers, and technical teams turn messy files into clean dashboards without writing code or hiring a data team.
+DataBreeze is an AI-assisted Vietnamese-first data pipeline and business insight workspace. It helps SMEs, online sellers, and technical teams turn messy files into clean business data without writing code or hiring a data team.
 
 The product should become a trusted workflow layer between raw business exports and decision-making.
 
@@ -14,7 +14,7 @@ The product should become a trusted workflow layer between raw business exports 
 Upload messy files.
 Map columns safely.
 Clean and validate data.
-See profit dashboards and business warnings.
+See profit data and business warnings.
 Reuse the workflow next time.
 ```
 
@@ -38,12 +38,9 @@ The first product experience should work for a single seller with one to three s
 
 Needs:
 
-- Simple onboarding.
 - Store setup.
 - Shopee/TikTok/Ads file upload.
-- Clear dashboard.
 - Missing cost warnings.
-- "What should I fix?" guidance.
 
 ### Multi-Shop Seller
 
@@ -52,7 +49,6 @@ This user operates several shops or channels and needs comparison.
 Needs:
 
 - Store filters.
-- All-store dashboard.
 - Per-store profit.
 - Repeatable mapping templates.
 - Upload history.
@@ -71,7 +67,7 @@ Needs:
 
 ### Developer / Agency
 
-This user repeatedly builds imports, scripts, and dashboards for clients.
+This user repeatedly builds imports, scripts, and reports for clients.
 
 Needs:
 
@@ -111,9 +107,9 @@ The processing run for an upload.
 
 Reusable mapping between source file columns and DataBreeze fields.
 
-### Dashboard
+### Dashboard Data
 
-The business view of imported and calculated data.
+Imported and calculated metrics exposed by the backend.
 
 ## MVP Scope
 
@@ -154,9 +150,7 @@ Do not add all sources at once. Each source should have a clear import flow, map
 
 ### First-Time Setup
 
-The user signs up, receives a personal workspace, and can add the first store.
-
-The empty dashboard should point to one action: upload the first file.
+The backend should support sign-up, personal workspace creation, and first store creation.
 
 ### Upload and Mapping
 
@@ -168,16 +162,14 @@ Requirements:
 - User uploads CSV/XLSX.
 - Backend parses headers and sample rows.
 - System suggests mappings.
-- Required fields are clearly shown.
+- Required fields are returned in API responses.
 - User confirms or edits mappings.
 - Mapping can later become reusable as a template.
 - Import cannot run without confirmed mappings.
 
 ### Validation and Error Handling
 
-Validation should be useful, not scary.
-
-The product should show:
+Validation responses should include:
 
 - Total rows.
 - Successful rows.
@@ -190,9 +182,9 @@ The product should show:
 
 Users should be able to download error reports when rows fail or warn.
 
-### Dashboard
+### Dashboard Data
 
-The dashboard should answer:
+Dashboard APIs should provide enough data to answer:
 
 - How much revenue did I make?
 - How much did I lose to discounts, refunds, fees, shipping, ads, expenses, and COGS?
@@ -216,35 +208,6 @@ Early rule-based insights:
 - Loss-making SKU.
 
 Future AI insights should explain business context but must not hide calculation logic.
-
-## UX Principles
-
-### Vietnamese-First
-
-Use familiar business language. Prefer terms like shop, doanh thu, chi phi, loi nhuan, gia von, don hang, SKU, phi san, hoan tien.
-
-### Guided, Not Technical
-
-The user should feel they are following a clear path:
-
-```text
-Upload -> Map columns -> Check data -> Update dashboard
-```
-
-Avoid exposing internal ETL terms in primary UI unless needed for debugging.
-
-### Errors Should Be Actionable
-
-Bad data should produce practical next steps:
-
-- Add missing SKU cost.
-- Fix invalid date.
-- Confirm required mapping.
-- Download error file.
-
-### Solo-First, Team-Ready
-
-The MVP should feel comfortable for a solo seller. The information architecture should still support teams later through workspace switching, member roles, and organization billing.
 
 ## Pricing and Limits
 
@@ -287,4 +250,4 @@ For every feature, ask:
 - Does this make profit clearer?
 - Does this handle Vietnamese file mess better?
 - Does this preserve trust and auditability?
-- Can a non-technical seller understand what happened?
+- Are API responses clear enough to explain what happened?
