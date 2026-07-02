@@ -2,8 +2,6 @@
 
 This guide is for agents working inside `BE_DataBreeze`. Read it before changing backend code, API behavior, ETL logic, billing logic, or persistence.
 
-Before making product or architecture decisions, also read `docs/PRODUCT_MEMORY_AND_LONG_TERM_STACK.md`. That file preserves the long-term product memory, stack decision, user model, module priority, and build sequence for DataBreeze.
-
 ## Backend Purpose
 
 `BE_DataBreeze` is the active backend for DataBreeze. It is a Spring Boot API that currently focuses on Shopee Vietnam import workflows and business analytics. The backend owns authentication, workspace access, file ingestion, mapping, import jobs, processed commerce data, dashboards, costs, expenses, subscriptions, admin operations, and early payment integration.
@@ -61,7 +59,7 @@ The project contains both `dto/shopee` and `dto/shoppee`. The correctly spelled 
 ## High-Level Data Flow
 
 ```text
-Frontend / Swagger request
+Client / Swagger request
   -> DTO request
   -> Controller
   -> Service interface
@@ -69,7 +67,7 @@ Frontend / Swagger request
   -> Repository
   -> Entity / PostgreSQL
   -> DTO response
-  -> Frontend
+  -> Client
 ```
 
 Controllers should not expose JPA entities directly.
@@ -397,7 +395,7 @@ When adding billing limits:
 1. Store durable counters in PostgreSQL.
 2. Use Redis only for short-lived throttles or locks.
 3. Make limit errors user-readable.
-4. Keep plan catalog and UI plan display in sync.
+4. Keep plan catalog and client-facing plan responses in sync.
 
 When changing auth:
 
